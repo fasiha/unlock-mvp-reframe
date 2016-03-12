@@ -6,16 +6,26 @@
   (let [new-japanese (r/subscribe [:new-japanese])
         new-translation (r/subscribe [:new-translation])]
     [:div#new-document-area
-     [:textarea {:placeholder "日本語" 
+     [:textarea {:placeholder "日本語"
                  :value @new-japanese
                  :onChange #(r/dispatch [:new-text :new-japanese (-> % .-target .-value)])}]
-     [:textarea {:placeholder "Translation" 
+     [:textarea {:placeholder "Translation"
                  :value @new-translation
                  :onChange #(r/dispatch [:new-text :new-translation (-> % .-target .-value)])}]
-     [:button "Save"]]))
+     [:button {:onClick #(r/dispatch [:submit-sentences @new-japanese @new-translation])} "Save"]]))
 
 (defn sentences-list-panel []
-  [:div.sentences-list])
+  (let [sentences (r/subscribe [:sentences])] ; the sub calls `vals`
+    (println @sentences)
+    [:div.sentences-list
+     [:ul
+      (for [s @sentences]               ; map would also work
+        ^{:key (:id s)}
+        [:li
+         [:button {:onClick #(r/dispatch [:delete-sentence (:id s)])} "×"]
+         (:japanese s) "—" (:translation s)
+         ])
+      ]]))
 
 (defn sentence-editor-panel []
   [:div.sentence-editor
@@ -24,7 +34,7 @@
    ])
 
 (defn main-panel []
-  (let [] 
+  (let []
     (fn []
       [:div
        [:h3 "Sentence Editor"]
