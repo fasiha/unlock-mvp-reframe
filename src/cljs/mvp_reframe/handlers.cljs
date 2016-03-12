@@ -6,3 +6,9 @@
  :initialize-db
  (fn  [_ _]
    db/default-db))
+
+(re-frame/register-handler
+  :new-text
+  (fn [db [_ path text]]
+    (println "In :new-text handler")
+    (merge db {path text})))
