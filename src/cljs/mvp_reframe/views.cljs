@@ -14,11 +14,20 @@
                  :onChange #(r/dispatch [:new-text :new-translation (-> % .-target .-value)])}]
      [:button "Save"]]))
 
+(defn sentences-list-panel []
+  [:div.sentences-list])
+
+(defn sentence-editor-panel []
+  [:div.sentence-editor
+   [new-sentences-panel]
+   [sentences-list-panel]
+   ])
+
 (defn main-panel []
   (let [] 
     (fn []
       [:div
        [:h3 "Sentence Editor"]
        [:p "Enter Japanese and an optional translation below. Separate sentences with two newlines."]
-       [new-sentences-panel]
+       [sentence-editor-panel]
        [:h3 "Document Editor"]])))
