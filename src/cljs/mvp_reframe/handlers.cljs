@@ -36,9 +36,9 @@
                  (fn [n jap]
                    (xhr/send
                      (str UNIDIC_URL (js/encodeURIComponent jap))
-                     #(re-frame/dispatch 
+                     #(re-frame/dispatch
                         [:parse-response
-                         (+ next-id n) 
+                         (+ next-id n)
                          (-> % .-target .getResponseText)])))
                  japanese-vec)
           ; for some reason, if we don't DO something with xhrs, they don't get
@@ -54,14 +54,13 @@
                    {id {:id id :japanese j :translation t :raw-parse nil}}))
                japanese-vec
                (apply conj translation-vec (repeat total nil)) ; translations are optional
-               (range (count japanese-vec))))
-        ))))
+               (range (count japanese-vec))))))))
 
 (re-frame/register-handler
   :parse-response
   middlewares
   (fn [db [_ id response]]
-    (update-in 
+    (update-in
       db [:sentences id]
       merge (walk/keywordize-keys (transit/read json-reader response)))))
 

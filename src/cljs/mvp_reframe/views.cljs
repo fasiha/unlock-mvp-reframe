@@ -10,11 +10,14 @@
                  :placeholder "日本語"
                  :value @new-japanese
                  :onChange #(r/dispatch [:new-text :new-japanese (-> % .-target .-value)])}]
+
      [:textarea {:cols 40 :rows 10
                  :placeholder "Translation"
                  :value @new-translation
                  :onChange #(r/dispatch [:new-text :new-translation (-> % .-target .-value)])}]
-     [:button {:onClick #(r/dispatch [:submit-sentences @new-japanese @new-translation])} "Save"]]))
+
+     [:button {:onClick #(r/dispatch [:submit-sentences @new-japanese @new-translation])}
+      "Save"]]))
 
 (defn sentences-list-panel []
   (let [sentences (r/subscribe [:sentences])] ; the sub calls `vals`
