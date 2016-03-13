@@ -8,11 +8,13 @@
   (GET 
     "/parse/:text" 
     [text] 
-    {
-     :status 200
-     :headers {"Content-Type" "application/json; charset=utf-8"}
-     ; FIXME slurp here is synchronous right? But will JVM magic that away?
-     :body (slurp (str "http://localhost:9090/" (URLEncoder/encode text)))})
+    (do
+      (println "Parsing text:" text)
+      {
+       :status 200
+       :headers {"Content-Type" "application/json; charset=utf-8"}
+       ; FIXME slurp here is synchronous right? But will JVM magic that away?
+       :body (slurp (str "http://localhost:9090/" (URLEncoder/encode text)))}))
   (GET "/foo" [] (do 
                    (println "In /foo!")
                    (str "duns")))

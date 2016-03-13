@@ -4,7 +4,9 @@
                  [reagent "0.5.1"]
                  [re-frame "0.6.0"]
                  [compojure "1.4.0"]
-                 [ring "1.4.0"]]
+                 [ring "1.4.0"]
+                 [com.cognitect/transit-cljs "0.8.237"]
+                 ]
 
   :min-lein-version "2.5.3"
 

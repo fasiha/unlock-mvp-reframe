@@ -6,17 +6,18 @@
   (let [new-japanese (r/subscribe [:new-japanese])
         new-translation (r/subscribe [:new-translation])]
     [:div#new-document-area
-     [:textarea {:placeholder "日本語"
+     [:textarea {:cols 40 :rows 10
+                 :placeholder "日本語"
                  :value @new-japanese
                  :onChange #(r/dispatch [:new-text :new-japanese (-> % .-target .-value)])}]
-     [:textarea {:placeholder "Translation"
+     [:textarea {:cols 40 :rows 10
+                 :placeholder "Translation"
                  :value @new-translation
                  :onChange #(r/dispatch [:new-text :new-translation (-> % .-target .-value)])}]
      [:button {:onClick #(r/dispatch [:submit-sentences @new-japanese @new-translation])} "Save"]]))
 
 (defn sentences-list-panel []
   (let [sentences (r/subscribe [:sentences])] ; the sub calls `vals`
-    (println @sentences)
     [:div.sentences-list
      [:ul
       (for [s @sentences]               ; map would also work
