@@ -15,6 +15,19 @@ Figwheel will automatically push cljs changes to the browser.
 
 Wait a bit, then browse to [http://localhost:3449](http://localhost:3449).
 
+### Backend-only test
+
+```
+lein ring headless-server
+```
+
+This starts the backend, so any endpoints defined in
+`src/clj/mvp-reframe/handler.clj` will be available on
+[http://localhost:3449](http://localhost:3449). This reloads the backend code so
+you can experiment with it live, but note! This won't auto-rebuild the
+ClojureScript code! If someone knows how to watch both front-end and back-end
+code, let me know!
+
 ## Production Build
 
 ```
