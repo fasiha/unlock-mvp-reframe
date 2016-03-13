@@ -22,6 +22,7 @@
   middlewares
   (fn [db [_ japanese translation]]
     (let [japanese-vec (string/split japanese #"\n\n")
+          n (count japanese-vec)
           translation-vec (string/split translation #"\n\n")
           next-id ((fnil inc 0) (last (keys (:sentences db))))]
       (assoc-in
@@ -32,7 +33,7 @@
           (map (fn [j t n] (let [id (+ next-id n)]
                              {id {:id id :japanese j :translation t}}))
                japanese-vec
-               translation-vec
+               (apply conj translation-vec (repeat n nil))
                (range (count japanese-vec))))
         ))))
 
