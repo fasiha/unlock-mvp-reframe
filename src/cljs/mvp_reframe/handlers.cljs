@@ -61,7 +61,7 @@
   middlewares
   (fn [db [_ id response]]
     (update-in
-      db [:sentences id]
+      db [:sentences id :raw-parse]
       merge (walk/keywordize-keys (transit/read json-reader response)))))
 
 (re-frame/register-handler
