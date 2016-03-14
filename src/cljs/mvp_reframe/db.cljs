@@ -7,7 +7,7 @@
    :new-translation ""
    :sentences (sorted-map)})
 
-(def default-sentence {:id -1          ; integer, unique
+(def default-sentence {:id -1          ; unique, currently int, FIXME make this UUID
                        :japanese ""    ; string
                        :translation "" ; string
                        :raw-parse []   ; UniDic (or similar) morphemes
