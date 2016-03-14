@@ -65,6 +65,12 @@
       merge (walk/keywordize-keys (transit/read json-reader response)))))
 
 (re-frame/register-handler
+  :send-sentence-to-surgery
+  middlewares
+  (fn [db [_ id]]
+    (assoc-in db [:sentence-id-surgery] id)))
+
+(re-frame/register-handler
   :delete-sentence
   middlewares
   (fn [db [_ id]]

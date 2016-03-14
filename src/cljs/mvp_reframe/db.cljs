@@ -2,7 +2,8 @@
   (:require [cljs.reader]))
 
 (def default-db
-  {:new-japanese ""
+  {:sentence-id-surgery -1
+   :new-japanese ""
    :new-translation ""
    :sentences (sorted-map)})
 
