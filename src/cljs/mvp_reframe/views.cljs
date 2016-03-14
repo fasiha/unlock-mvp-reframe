@@ -20,21 +20,60 @@
      [:button {:onClick #(r/dispatch [:submit-sentences @new-japanese @new-translation])}
       "Save"]]))
 
+(def hiragana "ぁあぃいぅうぇえぉおかがきぎくぐけげこごさざしじすずせぜそぞただちぢっつづてでとどなにぬねのはばぱひびぴふぶぷへべぺほぼぽまみむめもゃやゅゆょよらりるれろゎわゐゑをんゔゕゖ")
+(def katakana "ァアィイゥウェエォオカガキギクグケゲコゴサザシジスズセゼソゾタダチヂッツヅテデトドナニヌネノハバパヒビピフブプヘベペホボポマミムリルレロヮワヰヱヲンヴヵヶ")
+(def non-kana-pattern (re-pattern (str "[^" hiragana katakana "]")))
+
+(def katakana-to-hiragana-map
+  (into {} (map #(vector %1 %2)
+                (string/split katakana "")
+                (string/split hiragana ""))))
+
+(defn katakana-to-hiragana [text]
+  (string/join (map #(or (katakana-to-hiragana-map %) %) text)))
+
+(defn any-kanji? [text] (re-find non-kana-pattern text))
+
+(defn fwp [s] (str "（" s "）")) ; i.e., full-width parens
+(defn render-morpheme [{:keys [literal
+                               literal_pronunciation
+                               lemma
+                               lemma_reading
+                               pos
+                               conjugation] :as morpheme}]
+  (string/join
+    (flatten
+      [literal
+       (when (any-kanji? literal) (fwp (katakana-to-hiragana literal_pronunciation) ))
+       (when (not= literal lemma)
+         [" — "
+          lemma
+          " "
+          (when (any-kanji? lemma) (fwp (katakana-to-hiragana lemma_reading)))])
+       "↔ "
+       (string/join "/" pos)
+       " - "
+       (string/join "/" conjugation)])))
+
 (defn sentence-surgeon-panel []
   [:div.sentence-surgeon {:style {:flexGrow 1}}
    [:h3 "Sentence Surgeon"]
    (if-let [sentence (deref (r/subscribe [:sentence-for-surgery]))]
-     [:div (str (:japanese sentence))]
+     [:div (str (:japanese sentence))
+      [:ul
+       (for [morpheme (get-in sentence [:raw-parse :words])]
+         ^{:key (:position morpheme)}
+         [:li (render-morpheme morpheme)])]]
      [:div "…"])])
 
 (defn sentences-list-panel []
   (let [sentences (r/subscribe [:sentences])] ; the sub calls `vals`
-    [:div.sentences-list {:style {:flexGrow 1}}
+    [:div.sentences-list {:style {:flexGrow 1 :paddingRight "0.5em"}}
      [:h3 "Sentences list"]
      [:div {:style {:border "1px solid lightgray" :height "10em" :overflow "scroll"}}
       (for [sentence @sentences]               ; map would also work
         ^{:key (:id sentence)}
-        [:div
+        [:div.sentence-japanese-translation
          [:button {:onClick #(r/dispatch [:delete-sentence (:id sentence)])} "×"]
          [:button {:onClick #(r/dispatch [:send-sentence-to-surgery (:id sentence)])} "✎"]
          (:japanese sentence) "—" (:translation sentence)
