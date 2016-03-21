@@ -45,13 +45,15 @@
           ; run >.<, so save a count of them… WTF FIXME
           wtf (count xhrs)
           ]
+      ; Populate the sentence map with known fields now. The :raw-parse value
+      ; will be populated by XHR response (see callback above).
       (assoc-in
         db [:sentences]
         (into
           (:sentences db)
           (map (fn [j t n]
                  (let [id (+ next-id n)]
-                   {id {:id id :japanese j :translation t :raw-parse nil}}))
+                   {id (merge db/default-sentence {:id id :japanese j :translation t})}))
                japanese-vec
                (apply conj translation-vec (repeat total nil)) ; translations are optional
                (range (count japanese-vec))))))))
@@ -60,9 +62,11 @@
   :parse-response
   middlewares
   (fn [db [_ id response]]
-    (update-in
-      db [:sentences id :raw-parse]
-      merge (walk/keywordize-keys (transit/read json-reader response)))))
+    (let [raw-parse (walk/keywordize-keys (transit/read json-reader response))
+          tagged-parse (db/init-tagged-parse raw-parse)]
+      (update-in
+        db [:sentences id]
+        merge {:raw-parse raw-parse :tagged-parse tagged-parse}))))
 
 (re-frame/register-handler
   :send-sentence-to-surgery
@@ -75,3 +79,9 @@
   middlewares
   (fn [db [_ id]]
     (update-in db [:sentences] dissoc id)))
+
+(re-frame/register-handler
+  :merge-tagged-parse
+  middlewares
+  (fn [db [_ id idx]]
+    (update-in db [:sentences id :tagged-parse] db/merge-two-in-tagged-parse ,,, idx)))

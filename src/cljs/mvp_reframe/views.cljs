@@ -1,6 +1,7 @@
 (ns mvp-reframe.views
   (:require [re-frame.core :as r]
-            [clojure.string :as string]))
+            [clojure.string :as string]
+            [garden.core :refer [css]]))
 
 (defn new-sentences-panel []
   (let [new-japanese (r/subscribe [:new-japanese])
@@ -56,10 +57,23 @@
        (string/join "/" conjugation)])))
 
 (defn sentence-surgeon-panel []
-  [:div.sentence-surgeon {:style {:flexGrow 1}}
+  [:div.sentence-surgeon
    [:h3 "Sentence Surgeon"]
    (if-let [sentence (deref (r/subscribe [:sentence-for-surgery]))]
      [:div (str (:japanese sentence))
+
+      [:div
+       (map-indexed
+         (fn [idx word]
+           ^{:key (get-in word [:morphemes 0 :position])}
+           [:span
+            [:span.word (:raw-text word)]
+            [:span.separator "+"]
+            ]
+           )
+         (get-in sentence [:tagged-parse]))
+       ]
+
       [:ul
        (for [morpheme (get-in sentence [:raw-parse :words])]
          ^{:key (:position morpheme)}
@@ -68,9 +82,9 @@
 
 (defn sentences-list-panel []
   (let [sentences (r/subscribe [:sentences])] ; the sub calls `vals`
-    [:div.sentences-list {:style {:flexGrow 1 :paddingRight "0.5em"}}
+    [:div.sentences-list
      [:h3 "Sentences list"]
-     [:div {:style {:border "1px solid lightgray" :height "10em" :overflow "scroll"}}
+     [:div {:style {:border "1px solid lightgray" :height "10em" :overflowY "scroll"}}
       (for [sentence @sentences]               ; map would also work
         ^{:key (:id sentence)}
         [:div.sentence-japanese-translation
@@ -83,15 +97,19 @@
 (defn sentence-editor-panel []
   [:div.sentence-editor
    [new-sentences-panel]
-   [:div.sentence-list-surgeon {:style {:display "flex"}}
+   [:div.sentence-list-surgeon
     [sentences-list-panel]
     [sentence-surgeon-panel]]
    ])
+
+(defn make-css []
+  (css [:span.separator {:color "lightgray"}]))
 
 (defn main-panel []
   (let []
     (fn []
       [:div
+       [:style (make-css)]
        [:h2 "Sentence Editor"]
        [:p "Enter Japanese and an optional translation below. Separate sentences with two newlines."]
        [sentence-editor-panel]

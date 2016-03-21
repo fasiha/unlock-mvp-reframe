@@ -6,6 +6,7 @@
                  [compojure "1.4.0"]
                  [ring "1.4.0"]
                  [com.cognitect/transit-cljs "0.8.237"]
+                 [garden "1.3.2"]
                  ]
 
   :min-lein-version "2.5.3"
