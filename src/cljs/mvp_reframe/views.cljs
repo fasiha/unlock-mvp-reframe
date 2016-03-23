@@ -21,6 +21,8 @@
      [:button {:onClick #(r/dispatch [:submit-sentences @new-japanese @new-translation])}
       "Save"]]))
 
+(def blacklisted-pos #{"SupplementarySymbol" "Whitespace"})
+
 (def hiragana "ぁあぃいぅうぇえぉおかがきぎくぐけげこごさざしじすずせぜそぞただちぢっつづてでとどなにぬねのはばぱひびぴふぶぷへべぺほぼぽまみむめもゃやゅゆょよらりるれろゎわゐゑをんゔゕゖ")
 (def katakana     "ァアィイゥウェエォオカガキギクグケゲコゴサザシジスズセゼソゾタダチヂッツヅテデトドナニヌネノハバパヒビピフブプヘベペホボポマミムメモャヤュユョヨラリルレロヮワヰヱヲンヴヵヶ")
 (def non-kana-pattern (re-pattern (str "[^" hiragana katakana "]")))
@@ -56,26 +58,46 @@
        " - "
        (string/join "/" conjugation)])))
 
+(defn morphemes-joinable? [a b]
+  (let [apos (get-in a [:pos 0])
+        bpos (get-in b [:pos 0])]
+    (not (or (blacklisted-pos apos)
+             (blacklisted-pos bpos)))))
+
 (defn sentence-surgeon-panel []
   [:div.sentence-surgeon
    [:h3 "Sentence Surgeon"]
    (if-let [sentence (deref (r/subscribe [:sentence-for-surgery]))]
-     [:div (str (:japanese sentence))
-
-      [:div
+     [:div
+      [:div.original-sentence (str (:japanese sentence))]
+      [:div.sentence-split-merge
        (map-indexed
-         (fn [idx word]
+         (fn [idx [word next-word]]
            ^{:key (get-in word [:morphemes 0 :position])}
            [:span
             [:span.word (:raw-text word)]
-            [:span.separator "+"]
+            (if (> (count (:morphemes word)) 1)
+              [:sub.unseparator {:onClick #(r/dispatch
+                                             [:unmerge-tagged-parse
+                                              (:id sentence)
+                                              idx])} "×"])
+            (if (morphemes-joinable? (-> word :morphemes last)
+                                     (-> next-word :morphemes first))
+              [:sub.separator {:onClick #(r/dispatch
+                                           [:merge-tagged-parse
+                                            (:id sentence)
+                                            idx])} "+"])
             ]
            )
-         (get-in sentence [:tagged-parse]))
+         (partition 2 1 [nil] (:tagged-parse sentence)))
        ]
 
       [:ul
-       (for [morpheme (get-in sentence [:raw-parse :words])]
+       (for [morpheme (get-in sentence [:raw-parse :words]) :when (-> morpheme
+                                                                      :pos
+                                                                      (nth 0)
+                                                                      blacklisted-pos
+                                                                      not)]
          ^{:key (:position morpheme)}
          [:li (render-morpheme morpheme)])]]
      [:div "…"])])
@@ -103,7 +125,8 @@
    ])
 
 (defn make-css []
-  (css [:span.separator {:color "lightgray"}]))
+  (css [[:.original-sentence :.sentence-split-merge {:white-space "pre-wrap"}]
+        [:.separator :.unseparator {:color "lightgray"}]]))
 
 (defn main-panel []
   (let []

@@ -85,3 +85,9 @@
   middlewares
   (fn [db [_ id idx]]
     (update-in db [:sentences id :tagged-parse] db/merge-two-in-tagged-parse ,,, idx)))
+
+(re-frame/register-handler
+  :unmerge-tagged-parse
+  middlewares
+  (fn [db [_ id idx]]
+    (update-in db [:sentences id :tagged-parse] db/unmerge-in-tagged-parse ,,, idx)))

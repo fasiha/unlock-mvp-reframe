@@ -38,7 +38,9 @@
                 (:sentences db)))))
 
 (defn init-tagged-parse
-  "Convert `:raw-parse`, a vector of raw UniDic parse maps to `:tagged-parse`"
+  "Convert `(:raw-parse sentence)`, a map of `{:words UniDic-vec}` where
+  `UniDic-vec` is a vector of raw UniDic parse maps, to `(:tagged-parse
+  sentence)`"
   [raw-parse]
   (mapv #(merge default-tagged-parse
                 {:raw-text (:literal %) :morphemes [%]})
@@ -56,6 +58,13 @@
           ]
       (apply conj (vec left) middle right))
     tagged-parse))
+
+(defn unmerge-in-tagged-parse
+  [tagged-parse idx]
+  (let [[left right] (split-at idx tagged-parse)
+        orig (nth tagged-parse idx)
+        fin (init-tagged-parse {:words (:morphemes orig)})]
+    (into [] (concat left fin (rest right)))))
 
 ;; localStorage-wrangling middleware
 
