@@ -10,6 +10,7 @@
                  [garden "1.3.2"]
                  [ring/ring-defaults "0.2.0"]
                  [ring-middleware-format "0.7.0"]
+                 [ring/ring-mock "0.3.0"]
                  ]
 
   :min-lein-version "2.5.3"

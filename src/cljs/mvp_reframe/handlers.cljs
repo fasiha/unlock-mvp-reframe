@@ -8,6 +8,8 @@
 
 (def json-reader (transit/reader :json))
 (def transit-writer (transit/writer :json))
+(def my-transit-reader (partial transit/read json-reader))
+(def my-transit-writer (partial transit/write transit-writer))
 
 (def ->ls (after db->ls!)) ;; middleware to store db into local storage
 (def middlewares [->ls])  ;; add debug here, e.g. if needed
@@ -63,7 +65,7 @@
   :parse-response
   middlewares
   (fn [db [_ id response]]
-    (let [raw-parse (walk/keywordize-keys (transit/read json-reader response))
+    (let [raw-parse (walk/keywordize-keys (my-transit-reader response))
           tagged-parse (db/init-tagged-parse raw-parse)]
       (update-in
         db [:sentences id]
@@ -98,10 +100,11 @@
   middlewares
   (fn [db [_ lexeme]]
     (xhr/send "/jmdict"
-              #(println "in CB!" (-> % .-target .getResponseText))
+              #(println "in CB!" (-> % .-target .getResponseText my-transit-reader))
               "POST"
-              (transit/write transit-writer lexeme)
-              #js {"Content-Type" "application/transit+json"})
+              (my-transit-writer lexeme)
+              #js {"Content-Type" "application/transit+json"
+                   "Accept" "application/transit+json, */*"})
     ; no change for now.
     db))
 
