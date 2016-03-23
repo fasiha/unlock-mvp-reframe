@@ -93,13 +93,17 @@
        ]
 
       [:ul
-       (for [morpheme (get-in sentence [:raw-parse :words]) :when (-> morpheme
-                                                                      :pos
-                                                                      (nth 0)
-                                                                      blacklisted-pos
-                                                                      not)]
-         ^{:key (:position morpheme)}
-         [:li (render-morpheme morpheme)])]]
+       (for [lexeme (:tagged-parse sentence)
+             :when (-> lexeme :morphemes first :pos first blacklisted-pos not)]
+         ^{:key (get-in lexeme [:morphemes 0 :position])}
+         [:li (:raw-text lexeme)
+          (into [] (concat
+                     [:ul]
+                     (map (fn [morpheme]
+                            [:li (render-morpheme morpheme)])
+                          (:morphemes lexeme))))])]
+
+      ]
      [:div "…"])])
 
 (defn sentences-list-panel []
