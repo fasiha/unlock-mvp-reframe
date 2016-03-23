@@ -6,7 +6,10 @@
                  [compojure "1.4.0"]
                  [ring "1.4.0"]
                  [com.cognitect/transit-cljs "0.8.237"]
+                 [com.cognitect/transit-clj "0.8.285"]
                  [garden "1.3.2"]
+                 [ring/ring-defaults "0.2.0"]
+                 [ring-middleware-format "0.7.0"]
                  ]
 
   :min-lein-version "2.5.3"
@@ -19,11 +22,10 @@
 
   :clean-targets ^{:protect false} ["resources/public/js/compiled" "target"]
 
-  :figwheel {:css-dirs ["resources/public/css"]
-             :ring-handler mvp-reframe.handler/handler}
+  :figwheel {:ring-handler mvp-reframe.handler/app}
 
-  :ring {:handler mvp-reframe.handler/handler
-         :port 3449}
+  :ring {:handler mvp-reframe.handler/app
+         :port 3600}
 
   :cljsbuild {:builds [{:id "dev"
                         :source-paths ["src/cljs"]

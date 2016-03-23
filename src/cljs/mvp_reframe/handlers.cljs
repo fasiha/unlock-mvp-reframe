@@ -7,6 +7,7 @@
               [clojure.walk :as walk]))
 
 (def json-reader (transit/reader :json))
+(def transit-writer (transit/writer :json))
 
 (def ->ls (after db->ls!)) ;; middleware to store db into local storage
 (def middlewares [->ls])  ;; add debug here, e.g. if needed
@@ -91,3 +92,16 @@
   middlewares
   (fn [db [_ id idx]]
     (update-in db [:sentences id :tagged-parse] db/unmerge-in-tagged-parse ,,, idx)))
+
+(re-frame/register-handler
+  :lookup
+  middlewares
+  (fn [db [_ lexeme]]
+    (xhr/send "/jmdict"
+              #(println "in CB!" (-> % .-target .getResponseText))
+              "POST"
+              (transit/write transit-writer lexeme)
+              #js {"Content-Type" "application/transit+json"})
+    ; no change for now.
+    db))
+

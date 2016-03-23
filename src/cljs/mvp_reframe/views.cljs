@@ -97,6 +97,7 @@
              :when (-> lexeme :morphemes first :pos first blacklisted-pos not)]
          ^{:key (get-in lexeme [:morphemes 0 :position])}
          [:li (:raw-text lexeme)
+          [:button {:onClick #(r/dispatch [:lookup lexeme])} "lookup"]
           (into [] (concat
                      [:ul]
                      (map (fn [morpheme]

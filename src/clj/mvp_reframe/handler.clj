@@ -1,10 +1,20 @@
 (ns mvp-reframe.handler
   (:import java.net.URLEncoder)
-  (:require [compojure.core :refer [GET defroutes]]
+  (:require [compojure.core :refer [GET POST defroutes]]
             [compojure.route :as route]
-            [ring.util.response :refer [file-response]]))
+            [ring.util.response :refer [file-response]]
+            [ring.middleware.format :refer [wrap-restful-format]]))
 
 (defroutes handler
+  (POST
+    "/jmdict"
+    req
+    (do (println "/jmdict request:" req)
+        {:status 200
+         :headers {"Content-Type" "text/plain; charset=utf-8"}
+         :body "ok"
+         })
+    )
   (GET 
     "/parse/:text" 
     [text] 
@@ -23,3 +33,5 @@
   (route/not-found "Not found.")
   )
 
+(def app (-> handler
+             (wrap-restful-format)))
