@@ -96,15 +96,21 @@
     (update-in db [:sentences id :tagged-parse] db/unmerge-in-tagged-parse ,,, idx)))
 
 (re-frame/register-handler
-  :lookup
+  :ask-for-lookup
   middlewares
   (fn [db [_ lexeme]]
-    (xhr/send "/jmdict"
-              #(println "in CB!" (-> % .-target .getResponseText my-transit-reader))
-              "POST"
-              (my-transit-writer lexeme)
-              #js {"Content-Type" "application/transit+json"
+    (xhr/send "/jmdict"                                      ; URL
+              #(re-frame/dispatch                            ; callback
+                 [:lookup-response (-> % .-target .getResponseText my-transit-reader)])
+              "POST"                                         ; HTTP method
+              (my-transit-writer lexeme)                     ; POST payload
+              #js {"Content-Type" "application/transit+json" ; HTTP request headers
                    "Accept" "application/transit+json, */*"})
-    ; no change for now.
-    db))
+    (assoc db :jmdict-headwords (:jmdict-headwords db/default-db))))
+
+(re-frame/register-handler
+  :lookup-response
+  middlewares
+  (fn [db [_ headwords]]
+    (assoc db :jmdict-headwords headwords)))
 

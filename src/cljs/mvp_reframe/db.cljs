@@ -5,7 +5,8 @@
   {:sentence-id-surgery -1
    :new-japanese ""
    :new-translation ""
-   :sentences (sorted-map)})
+   :sentences (sorted-map)
+   :jmdict-headwords[]})
 
 (def default-sentence {:id -1          ; unique, currently int, FIXME make this UUID
                        :japanese ""    ; string

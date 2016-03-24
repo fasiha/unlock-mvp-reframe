@@ -45,6 +45,16 @@
        " - "
        (string/join "/" conjugation)])))
 
+(defn render-headword
+  [{:keys [k_ele r_ele sense ent_seq] :as headword}]
+  (let [kanjis (map :keb k_ele)
+        readings (map :reb r_ele)
+        titles (concat kanjis readings)
+        title (string/join "・" titles)]
+    [:div title
+     [:ul (map-indexed (fn [n a-sense] ^{:key (str ent_seq "," n)} [:li (->> a-sense :gloss (string/join "； "))]) sense)]
+     ]))
+
 (defn morphemes-joinable? [a b]
   (let [apos (get-in a [:pos 0])
         bpos (get-in b [:pos 0])]
@@ -74,8 +84,7 @@
                                            [:merge-tagged-parse
                                             (:id sentence)
                                             idx])} "+"])
-            ]
-           )
+            ])
          (partition 2 1 [nil] (:tagged-parse sentence)))
        ]
 
@@ -84,12 +93,21 @@
              :when (-> lexeme :morphemes first :pos first blacklisted-pos not)]
          ^{:key (get-in lexeme [:morphemes 0 :position])}
          [:li (:raw-text lexeme)
-          [:button {:onClick #(r/dispatch [:lookup lexeme])} "lookup"]
+          [:button {:onClick #(r/dispatch [:ask-for-lookup lexeme])} "lookup"]
           (into [] (concat
                      [:ul]
                      (map (fn [morpheme]
                             [:li (render-morpheme morpheme)])
                           (:morphemes lexeme))))])]
+
+      (let [headwords @(r/subscribe [:jmdict-headwords])]
+        [:div
+         [:h4 "JMDICT lookup"]
+         [:ul (map
+                (fn [headword]
+                  ^{:key (:ent_seq headword)}
+                  [:li (render-headword headword)])
+                headwords)]])
 
       ]
      [:div "…"])])

@@ -11,7 +11,7 @@
   (POST
     "/jmdict"
     req
-    (do (println "/jmdict request:" req)
+    (do (println "/jmdict requested lexeme:" (:params req))
         (let [lexeme (:params req)]
           {:body (taggers/lexeme-to-headwords lexeme)})))
   (GET
