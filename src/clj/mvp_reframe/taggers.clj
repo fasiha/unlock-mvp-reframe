@@ -108,11 +108,10 @@
     (sort-by (comp not entry-common?) headwords)))
 
 (defn lexeme-to-headwords
-  [lex]
-  (let [raw-text (:raw-text lex)
-        morphemes (:morphemes lex)]
+  [{:keys [raw-text morphemes] :as lex}]
+  (let [headwords (mapcat morpheme-to-headwords morphemes)]
     (if (-> morphemes count (= 1))
-      ; NOT multi-morpheme
-      (morpheme-to-headwords (first morphemes))
-      ;
-      (text-to-headwords raw-text))))
+      ; NOT multi-morpheme: all done
+      headwords
+      ; multi-morpheme: search for raw-text too:
+      (concat (text-to-headwords raw-text) headwords))))
