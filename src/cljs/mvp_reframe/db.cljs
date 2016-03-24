@@ -53,41 +53,41 @@
                                                         :morphemes morphemes
                                                         :tags tags
                                                         :children children})
-(defn squash-wrap
+(defn fuse-wrap
   [operation taggables idx]
   (if (and (nth taggables (+ 1 idx) false) ; merge idx and (1+idx)th entries
-           (or (= operation :squash) (= operation :wrap)))
+           (or (= operation :fuse) (= operation :wrap)))
     (let [[left right] (split-at idx taggables)
           [a b] (take 2 right)
           right (drop 2 right)
           middle (make-taggable (str (:raw-text a) (:raw-text b))
                                 (into (:morphemes a) (:morphemes b))
                                 []
-                                (if (= operation :squash)
+                                (if (= operation :fuse)
                                   []
                                   [a b]))]
       (apply conj (vec left) middle right))
     ; TODO just return the original input if either/both argument checks fail?
     taggables))
 
-(def squash (partial squash-wrap :squash))
-(def wrap (partial squash-wrap :wrap))
+(def fuse (partial fuse-wrap :fuse))
+(def wrap (partial fuse-wrap :wrap))
 
-(defn unsquash-unwrap
+(defn unfuse-unwrap
   [operation taggables idx]
   (if (and (nth taggables idx false)
-           (or (= operation :unsquash) (= operation :unwrap)))
+           (or (= operation :unfuse) (= operation :unwrap)))
     (let [[left right] (split-at idx taggables)
-          wrapped-or-squashed (first right)
+          wrapped-or-fuseed (first right)
           right (rest right)
-          unwrapped-or-unsquashed (if (= operation :unwrap)
-                      (:children wrapped-or-squashed)
-                      (init-tagged-parse {:words (:morphemes wrapped-or-squashed)}))]
-      (into [] (concat left unwrapped-or-unsquashed right)))
+          unwrapped-or-unfuseed (if (= operation :unwrap)
+                      (:children wrapped-or-fuseed)
+                      (init-tagged-parse {:words (:morphemes wrapped-or-fuseed)}))]
+      (into [] (concat left unwrapped-or-unfuseed right)))
     taggables))
 
-(def unwrap-in-tagged-parse (partial unsquash-unwrap :unwrap))
-(def unsquash-in-tagged-parse (partial unsquash-unwrap :unsquash))
+(def unwrap-in-tagged-parse (partial unfuse-unwrap :unwrap))
+(def unfuse-in-tagged-parse (partial unfuse-unwrap :unfuse))
 
 ;; localStorage-wrangling middleware
 

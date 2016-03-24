@@ -84,10 +84,10 @@
     (update-in db [:sentences] dissoc id)))
 
 (re-frame/register-handler
-  :squash-tagged-parse
+  :fuse-tagged-parse
   middlewares
   (fn [db [_ idx]]
-    (update-in db [:sentences (:sentence-id-surgery db) :tagged-parse] db/squash ,,, idx)))
+    (update-in db [:sentences (:sentence-id-surgery db) :tagged-parse] db/fuse ,,, idx)))
 
 (re-frame/register-handler
   :wrap-tagged-parse
@@ -102,10 +102,10 @@
     (update-in db [:sentences (:sentence-id-surgery db) :tagged-parse] db/unwrap-in-tagged-parse ,,, idx)))
 
 (re-frame/register-handler
-  :unsquash-tagged-parse
+  :unfuse-tagged-parse
   middlewares
   (fn [db [_ idx]]
-    (update-in db [:sentences (:sentence-id-surgery db) :tagged-parse] db/unsquash-in-tagged-parse ,,, idx)))
+    (update-in db [:sentences (:sentence-id-surgery db) :tagged-parse] db/unfuse-in-tagged-parse ,,, idx)))
 
 (re-frame/register-handler
   :ask-for-lookup

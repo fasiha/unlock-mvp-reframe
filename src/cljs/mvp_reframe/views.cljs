@@ -94,7 +94,7 @@
              "]"
              (if (and (= level 0)
                       (-> taggable :morphemes count (not= 1)))
-               [:button {:onClick #(r/dispatch [:unsquash-tagged-parse idx])} "unsquash"])]
+               [:button {:onClick #(r/dispatch [:unfuse-tagged-parse idx])} "unfuse"])]
 
             ; CASE 2: pass non-empty (thus >=2-long) vector of child taggables
             ; to render-taggables
@@ -115,14 +115,14 @@
           ; blacklisted (whitespace, etc.),
           ; THEN make buttons to allow the two taggables to be:
           ;
-          ; - squashed: replace with new taggable with NO children, and with no
+          ; - fuseed: replace with new taggable with NO children, and with no
           ; tags and concatenated morphemes, or
           ; - wrapped: make a new taggable WITH the two taggables as children,
           ; and again without tags and with concatenated morphemes.
           ;
-          ; SO, if you made a mistake and need to wrap/squash/unsquash taggables
+          ; SO, if you made a mistake and need to wrap/fuse/unfuse taggables
           ; which are already children of other taggables, then tough luck: you
-          ; have to unwrap/unsquash all ancestor taggables till this taggable &
+          ; have to unwrap/unfuse all ancestor taggables till this taggable &
           ; its neighbor are at the top-level, and deal with them from the
           ; beginning. FIXME maybe?
           (if (and (= level 0)
@@ -131,7 +131,7 @@
                                         (-> next-taggable :morphemes first)))
             ^{:key (str "buttons" level ","  (-> taggable :morphemes first :position))}
             [:span
-             [:button {:onClick #(r/dispatch [:squash-tagged-parse idx])} "squash"]
+             [:button {:onClick #(r/dispatch [:fuse-tagged-parse idx])} "fuse"]
              [:button {:onClick #(r/dispatch [:wrap-tagged-parse idx])} "wrap"]])])
        taggables
        (-> taggables (subvec ,,, 1) (conj ,,, nil))
