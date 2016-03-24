@@ -1,7 +1,8 @@
 (ns mvp-reframe.views
   (:require [re-frame.core :as r]
             [clojure.string :as string]
-            [garden.core :refer [css]]))
+            [garden.core :refer [css]]
+            [mvp-reframe.kana-kanji :as kana]))
 
 (defn new-sentences-panel []
   (let [new-japanese (r/subscribe [:new-japanese])
@@ -23,20 +24,6 @@
 
 (def blacklisted-pos #{"SupplementarySymbol" "Whitespace"})
 
-(def hiragana "ぁあぃいぅうぇえぉおかがきぎくぐけげこごさざしじすずせぜそぞただちぢっつづてでとどなにぬねのはばぱひびぴふぶぷへべぺほぼぽまみむめもゃやゅゆょよらりるれろゎわゐゑをんゔゕゖ")
-(def katakana     "ァアィイゥウェエォオカガキギクグケゲコゴサザシジスズセゼソゾタダチヂッツヅテデトドナニヌネノハバパヒビピフブプヘベペホボポマミムメモャヤュユョヨラリルレロヮワヰヱヲンヴヵヶ")
-(def non-kana-pattern (re-pattern (str "[^" hiragana katakana "]")))
-
-(def katakana-to-hiragana-map
-  (into {} (map #(vector %1 %2)
-                (string/split katakana "")
-                (string/split hiragana ""))))
-
-(defn katakana-to-hiragana [text]
-  (string/join (map #(or (katakana-to-hiragana-map %) %) text)))
-
-(defn any-kanji? [text] (re-find non-kana-pattern text))
-
 (defn fwp [s] (str "（" s "）")) ; i.e., full-width parens
 (defn render-morpheme [{:keys [literal
                                literal_pronunciation
@@ -47,12 +34,12 @@
   (string/join
     (flatten
       [literal
-       (when (any-kanji? literal) (fwp (katakana-to-hiragana literal_pronunciation) ))
+       (when (kana/any-kanji? literal) (fwp (kana/katakana-to-hiragana literal_pronunciation) ))
        (when (not= literal lemma)
          [" — "
           lemma
           " "
-          (when (any-kanji? lemma) (fwp (katakana-to-hiragana lemma_reading)))])
+          (when (kana/any-kanji? lemma) (fwp (kana/katakana-to-hiragana lemma_reading)))])
        "↔ "
        (string/join "/" pos)
        " - "

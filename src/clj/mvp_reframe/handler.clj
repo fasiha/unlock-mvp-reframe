@@ -4,7 +4,8 @@
             [compojure.route :as route]
             [ring.util.response :refer [file-response]]
             [ring.middleware.format :refer [wrap-restful-format]]
-            [ring.middleware.reload :refer [wrap-reload]]))
+            [ring.middleware.reload :refer [wrap-reload]]
+            [mvp-reframe.taggers :as taggers]))
 
 (defroutes handler
   (POST
@@ -12,7 +13,7 @@
     req
     (do (println "/jmdict request:" req)
         (let [lexeme (:params req)]
-          {:body {:a 9 :b [123 411]}})))
+          {:body (taggers/lexeme-to-headwords lexeme)})))
   (GET
     "/parse/:text"
     [text]

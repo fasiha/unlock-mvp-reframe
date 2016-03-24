@@ -11,11 +11,12 @@
                  [ring/ring-defaults "0.2.0"]
                  [ring-middleware-format "0.7.0"]
                  [ring/ring-mock "0.3.0"]
+                 [cheshire "5.5.0"]
                  ]
 
   :min-lein-version "2.5.3"
 
-  :source-paths ["src/clj"]
+  :source-paths ["src/clj" "src/cljc"]
 
   :plugins [[lein-cljsbuild "1.1.1"]
             [lein-figwheel "0.5.0-2"]
@@ -29,7 +30,7 @@
          :port 3600}
 
   :cljsbuild {:builds [{:id "dev"
-                        :source-paths ["src/cljs"]
+                        :source-paths ["src/cljs" "src/cljc"]
                         :figwheel {:on-jsload "mvp-reframe.core/mount-root"}
                         :compiler {:main mvp-reframe.core
                                    :output-to "resources/public/js/compiled/app.js"
@@ -38,7 +39,7 @@
                                    :source-map-timestamp true}}
 
                        {:id "min"
-                        :source-paths ["src/cljs"]
+                        :source-paths ["src/cljs" "src/cljc"]
                         :compiler {:main mvp-reframe.core
                                    :output-to "resources/public/js/compiled/app.js"
                                    :optimizations :advanced
