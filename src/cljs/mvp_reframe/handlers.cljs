@@ -84,16 +84,22 @@
     (update-in db [:sentences] dissoc id)))
 
 (re-frame/register-handler
-  :merge-tagged-parse
+  :squash-tagged-parse
   middlewares
-  (fn [db [_ id idx]]
-    (update-in db [:sentences id :tagged-parse] db/merge-two-in-tagged-parse ,,, idx)))
+  (fn [db [_ idx]]
+    (update-in db [:sentences (:sentence-id-surgery db) :tagged-parse] db/squash ,,, idx)))
+
+(re-frame/register-handler
+  :wrap-tagged-parse
+  middlewares
+  (fn [db [_ idx]]
+    (update-in db [:sentences (:sentence-id-surgery db) :tagged-parse] db/wrap ,,, idx)))
 
 (re-frame/register-handler
   :unmerge-tagged-parse
   middlewares
-  (fn [db [_ id idx]]
-    (update-in db [:sentences id :tagged-parse] db/unmerge-in-tagged-parse ,,, idx)))
+  (fn [db [_ idx]]
+    (update-in db [:sentences (:sentence-id-surgery db) :tagged-parse] db/unmerge-in-tagged-parse ,,, idx)))
 
 (re-frame/register-handler
   :ask-for-lookup
@@ -106,7 +112,9 @@
               (my-transit-writer lexeme)                     ; POST payload
               #js {"Content-Type" "application/transit+json" ; HTTP request headers
                    "Accept" "application/transit+json, */*"})
-    (assoc db :jmdict-headwords (:jmdict-headwords db/default-db))))
+    (assoc db
+           :lexeme-being-looked-up lexeme
+           :jmdict-headwords (:jmdict-headwords db/default-db))))
 
 (re-frame/register-handler
   :lookup-response
@@ -114,3 +122,8 @@
   (fn [db [_ headwords]]
     (assoc db :jmdict-headwords headwords)))
 
+(re-frame/register-handler
+  :tag-lexeme-with-jmdict
+  middlewares
+  (fn [db [_ headword sense-number]]
+    db #_(update-in db [:sentences (:sentence-id-surgery db) :tagged-parse ])))

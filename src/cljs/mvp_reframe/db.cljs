@@ -2,23 +2,25 @@
   (:require [cljs.reader]))
 
 (def default-db
-  {:sentence-id-surgery -1
-   :new-japanese ""
-   :new-translation ""
-   :sentences (sorted-map)
-   :jmdict-headwords[]})
+  {:new-japanese "" ; Japanese textbox
+   :new-translation "" ; translation textbox
+   :sentences (sorted-map) ; sorted-set: integer keys and values per default-sentence schema
+   :sentence-id-surgery -1 ; integer key for sentence being edited (surgery)
+   :lexeme-being-looked-up {} ; a lexeme in the sentence being edited to look up in JMdict
+   :jmdict-headwords [] ; server response: JMdict headwords matching a given lexeme/morpheme
+   })
 
-(def default-sentence {:id -1          ; unique, currently int, FIXME make this UUID
-                       :japanese ""    ; string
-                       :translation "" ; string
-                       :raw-parse []   ; UniDic (or similar) morphemes
-                       :tagged-parse []
+(def default-sentence {:id -1           ; unique, currently int, FIXME make this UUID
+                       :japanese ""     ; string
+                       :translation ""  ; string
+                       :raw-parse []    ; UniDic (or similar) morphemes
+                       :tagged-parse [] ; vector of elements following default-tagged-parse schema
                        })
 
-(def default-tagged-parse {:components [] ; list containing other maps like this (recursive)
-                           :tags []       ; list of tags
-                           :raw-text ""   ; raw string
-                           :morphemes []  ; list of UniDic morphemes, like :raw-parse above
+(def default-tagged-parse {:children []  ; list containing other maps like this (recursive)
+                           :tags []      ; list of tags
+                           :raw-text ""  ; raw string
+                           :morphemes [] ; list of UniDic morphemes, like :raw-parse above
                            })
 
 ;; Helper functions
@@ -47,23 +49,33 @@
                 {:raw-text (:literal %) :morphemes [%]})
         (:words raw-parse)))
 
-(defn -vec-str-aware-merge [a b] (if (coll? a) (into a b) (str a b)))
-(defn merge-two-in-tagged-parse
-  "In a vector of :tagged-parse maps, merge the two beginning at index idx"
-  [tagged-parse idx]
-  (if (<= idx (- (count tagged-parse) 2))
-    (let [[left right] (split-at idx tagged-parse)
+(defn make-taggable [raw-text morphemes tags children] {:raw-text raw-text 
+                                                        :morphemes morphemes 
+                                                        :tags tags 
+                                                        :children children})
+(defn squash-wrap [operation taggables idx]
+  (if (and (nth taggables (+ 1 idx) false) ; merge idx and (1+idx)th entries
+           (or (= operation :squash) (= operation :wrap)))
+    (let [[left right] (split-at idx taggables)
           [a b] (take 2 right)
-          middle (merge-with -vec-str-aware-merge a b)
           right (drop 2 right)
-          ]
+          middle (make-taggable (str (:raw-text a) (:raw-text b))
+                                (into (:morphemes a) (:morphemes b))
+                                []
+                                (if (= operation :squash) 
+                                  [] 
+                                  [a b]))]
       (apply conj (vec left) middle right))
-    tagged-parse))
+    ; TODO just return the original input if either/both argument checks fail?
+    taggables))
+
+(def squash (partial squash-wrap :squash))
+(def wrap (partial squash-wrap :wrap))
 
 (defn unmerge-in-tagged-parse
-  [tagged-parse idx]
-  (let [[left right] (split-at idx tagged-parse)
-        orig (nth tagged-parse idx)
+  [taggables idx]
+  (let [[left right] (split-at idx taggables)
+        orig (nth taggables idx)
         fin (init-tagged-parse {:words (:morphemes orig)})]
     (into [] (concat left fin (rest right)))))
 

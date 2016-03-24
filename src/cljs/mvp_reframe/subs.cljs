@@ -8,3 +8,4 @@
 (re-frame/register-sub :sentences (fn [db] (reaction (vals (:sentences @db)))))
 (re-frame/register-sub :sentence-for-surgery (fn [db] (reaction (get-in @db [:sentences (:sentence-id-surgery @db)]))))
 (re-frame/register-sub :jmdict-headwords (fn [db] (reaction (:jmdict-headwords @db))))
+(re-frame/register-sub :lexeme-being-looked-up (fn [db] (reaction (:lexeme-being-looked-up @db))))
