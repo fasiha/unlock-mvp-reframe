@@ -96,10 +96,16 @@
     (update-in db [:sentences (:sentence-id-surgery db) :tagged-parse] db/wrap ,,, idx)))
 
 (re-frame/register-handler
-  :unmerge-tagged-parse
+  :unwrap-tagged-parse
   middlewares
   (fn [db [_ idx]]
-    (update-in db [:sentences (:sentence-id-surgery db) :tagged-parse] db/unmerge-in-tagged-parse ,,, idx)))
+    (update-in db [:sentences (:sentence-id-surgery db) :tagged-parse] db/unwrap-in-tagged-parse ,,, idx)))
+
+(re-frame/register-handler
+  :unsquash-tagged-parse
+  middlewares
+  (fn [db [_ idx]]
+    (update-in db [:sentences (:sentence-id-surgery db) :tagged-parse] db/unsquash-in-tagged-parse ,,, idx)))
 
 (re-frame/register-handler
   :ask-for-lookup

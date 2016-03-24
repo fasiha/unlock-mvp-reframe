@@ -72,12 +72,21 @@
 (def squash (partial squash-wrap :squash))
 (def wrap (partial squash-wrap :wrap))
 
-(defn unmerge-in-tagged-parse
+(defn unwrap-in-tagged-parse
   [taggables idx]
   (let [[left right] (split-at idx taggables)
-        orig (nth taggables idx)
-        fin (init-tagged-parse {:words (:morphemes orig)})]
-    (into [] (concat left fin (rest right)))))
+        wrapped (first right)
+        right (rest right)
+        unwrapped (:children wrapped)]
+    (into [] (concat left unwrapped right))))
+
+(defn unsquash-in-tagged-parse
+  [taggables idx]
+  (let [[left right] (split-at idx taggables)
+        squashed (nth taggables idx)
+        right (rest right)
+        unsquashed (init-tagged-parse {:words (:morphemes squashed)})]
+    (into [] (concat left unsquashed right))))
 
 ;; localStorage-wrangling middleware
 

@@ -2,7 +2,8 @@
   (:require [re-frame.core :as r]
             [clojure.string :as string]
             [garden.core :refer [css]]
-            [mvp-reframe.kana-kanji :as kana]))
+            [mvp-reframe.kana-kanji :as kana]
+            [mvp-reframe.config :as config :refer [debug?]]))
 
 (defn new-sentences-panel []
   (let [new-japanese (r/subscribe [:new-japanese])
@@ -67,28 +68,23 @@
     (not (or (blacklisted-pos apos)
              (blacklisted-pos bpos)))))
 
-; (defn render-taggable
-;   [level [taggable next-taggable]]
-;   (println "here" (str level "," (-> taggable :morphemes first :position)) (-> taggable :raw-text))
-;   (if (-> taggable :children empty?)
-;     ^{:key (str level "," (-> taggable :morphemes first :position))} [:span (:raw-text taggable)]
-;     (render-taggable (+ 1 level) )
-;     ))
-
 (defn render-taggables
   "An outer function should call this with level=0 and an arbitrarily-long
-  vector of taggables. But if/when the function recurses, level will be >0 and
-  taggables will have >=2 elements. Recursion happens whenever a taggable in
-  taggables has children."
-  [level taggables]
-  (println "render-taggables" (map :raw-text taggables))
+  vector of taggables (& third argument idx-in-parent as nil). If/when the
+  function recurses, level will be >0, taggables will have >=2 elements, and
+  idx-in-parent will be set. Recursion happens whenever a taggable in taggables
+  has children: idx-in-parent will then be the index of the taggable with
+  children in its own list of siblings."
+  [level taggables & [idx-in-parent]]
+  (if debug? (println "render-taggables" (map :raw-text taggables) "level" level "idx-in-parent" idx-in-parent))
   (let [num-taggables (count taggables)
         render-one
-        (fn [level taggable]
-          (println "render-one"
+        (fn [level taggable idx]
+          (if debug? (println "render-one"
                    (str level ","
                         (-> taggable :morphemes first :position))
-                   (-> taggable :raw-text))
+                   (-> taggable :raw-text)
+                   "idx" idx))
           (if (-> taggable :children empty?)
             ; CASE 1: no children: render the taggable
             ^{:key (str level "," (-> taggable :morphemes first :position))}
@@ -96,53 +92,56 @@
              "["
              (:raw-text taggable)
              "]"
-             (if (-> taggable :morphemes count (not= 1)) [:button "unsquash"])]
+             (if (and (= level 0)
+                      (-> taggable :morphemes count (not= 1)))
+               [:button {:onClick #(r/dispatch [:unsquash-tagged-parse idx])} "unsquash"])]
 
             ; CASE 2: pass non-empty (thus >=2-long) vector of child taggables
             ; to render-taggables
-            (render-taggables (+ 1 level) (:children taggable))))]
+            (render-taggables (+ 1 level) (:children taggable) idx)))]
     ^{:key level}
     [:span.taggables
      "{"
      (mapcat
        (fn [taggable next-taggable idx]
          [; First, render the taggable:
-          (render-one level taggable)
+          (render-one level taggable idx)
 
-          ; Next. IF (1) this isn't the last taggable,
-          ;
+          ; Next. IF (1) we're at the top-level,
           ; AND
-          ;
-          ; if (2) this taggable & next-taggable's adjacent morphemes aren't
+          ; if (2) this isn't the last taggable,
+          ; AND
+          ; if (3) this taggable & next-taggable's adjacent morphemes aren't
           ; blacklisted (whitespace, etc.),
-
-          ; THEN make buttons to allow the two taggables to be squashed (replace
-          ; with new taggable with NO children, and with no tags and
-          ; concatenated morphemes).
+          ; THEN make buttons to allow the two taggables to be:
           ;
-          ; ALSO, IF (3) this is the top level=0, THEN make another button to
-          ; wrap the two taggables (make a new taggable WITH the two taggables
-          ; as children, and again without tags and with concatenated
-          ; morphemes). 
+          ; - squashed: replace with new taggable with NO children, and with no
+          ; tags and concatenated morphemes, or
+          ; - wrapped: make a new taggable WITH the two taggables as children,
+          ; and again without tags and with concatenated morphemes.
           ;
-          ; SO, if you made a mistake and need to wrap taggables which are
-          ; already children of other taggables, then tough luck: you have to
-          ; unwrap all ancestor taggables till this taggable & its neighbor are
-          ; at the top-level, wrap them, and rewrap the rest. FIXME maybe?
-          (if (and (not= idx (- num-taggables 1))                     ; (1)
-                   (morphemes-joinable? (-> taggable :morphemes last) ; (2)
+          ; SO, if you made a mistake and need to wrap/squash/unsquash taggables
+          ; which are already children of other taggables, then tough luck: you
+          ; have to unwrap/unsquash all ancestor taggables till this taggable &
+          ; its neighbor are at the top-level, and deal with them from the
+          ; beginning. FIXME maybe?
+          (if (and (= level 0)
+                   (not= idx (- num-taggables 1))
+                   (morphemes-joinable? (-> taggable :morphemes last)
                                         (-> next-taggable :morphemes first)))
+            ^{:key (str "buttons" level ","  (-> taggable :morphemes first :position))}
             [:span
-             [:button "squash"]
-             (if (= level 0)                                          ; (3)
-               [:button "wrap"])])])
+             [:button {:onClick #(r/dispatch [:squash-tagged-parse idx])} "squash"]
+             [:button {:onClick #(r/dispatch [:wrap-tagged-parse idx])} "wrap"]])])
        taggables
        (-> taggables (subvec ,,, 1) (conj ,,, nil))
        (range num-taggables))
      "}"
      ; A vector of taggables should be unwrappable, unless it's the very
      ; top-level
-     (if (not= level 0) [:button "unwrap"])]))
+     (if (= level 1) [:button
+                      {:onClick #(r/dispatch [:unwrap-tagged-parse idx-in-parent])}
+                      "unwrap"])]))
 
 (defn sentence-surgeon-panel []
   [:div.sentence-surgeon
@@ -153,40 +152,17 @@
 
       [:div (render-taggables 0 (:tagged-parse sentence))]
 
-      #_[:div.sentence-split-merge
-       (map-indexed
-         (fn [idx [word next-word]]
-           ^{:key (get-in word [:morphemes 0 :position])}
-           [:span
-            [:span.word (:raw-text word)]
-            (if (> (count (:morphemes word)) 1)
-              [:sub.unseparator {:onClick #(r/dispatch
-                                             [:unmerge-tagged-parse
-                                              idx])} "×"])
-            (if (morphemes-joinable? (-> word :morphemes last)
-                                     (-> next-word :morphemes first))
-              [:span
-               [:sub.separator {:onClick #(r/dispatch
-                                            [:squash-tagged-parse
-                                             idx])} "🔨"]
-               [:sub.separator {:onClick #(r/dispatch
-                                            [:wrap-tagged-parse
-                                             idx])} "🎁"]])
-            ])
-         (partition 2 1 [nil] (:tagged-parse sentence)))
-       ]
-
-      #_[:ul
-       (for [lexeme (:tagged-parse sentence)
-             :when (-> lexeme :morphemes first :pos first blacklisted-pos not)]
-         ^{:key (get-in lexeme [:morphemes 0 :position])}
-         [:li (:raw-text lexeme)
-          [:button {:onClick #(r/dispatch [:ask-for-lookup lexeme])} "lookup"]
-          (into [] (concat
-                     [:ul]
-                     (map (fn [morpheme]
-                            [:li (render-morpheme morpheme)])
-                          (:morphemes lexeme))))])]
+      ; #_[:ul
+      ;  (for [lexeme (:tagged-parse sentence)
+      ;        :when (-> lexeme :morphemes first :pos first blacklisted-pos not)]
+      ;    ^{:key (get-in lexeme [:morphemes 0 :position])}
+      ;    [:li (:raw-text lexeme)
+      ;     [:button {:onClick #(r/dispatch [:ask-for-lookup lexeme])} "lookup"]
+      ;     (into [] (concat
+      ;                [:ul]
+      ;                (map (fn [morpheme]
+      ;                       [:li (render-morpheme morpheme)])
+      ;                     (:morphemes lexeme))))])]
 
       (let [headwords @(r/subscribe [:jmdict-headwords])
             lexeme-lookup @(r/subscribe [:lexeme-being-looked-up])]
