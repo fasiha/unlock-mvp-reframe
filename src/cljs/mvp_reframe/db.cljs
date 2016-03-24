@@ -49,11 +49,12 @@
                 {:raw-text (:literal %) :morphemes [%]})
         (:words raw-parse)))
 
-(defn make-taggable [raw-text morphemes tags children] {:raw-text raw-text 
-                                                        :morphemes morphemes 
-                                                        :tags tags 
+(defn make-taggable [raw-text morphemes tags children] {:raw-text raw-text
+                                                        :morphemes morphemes
+                                                        :tags tags
                                                         :children children})
-(defn squash-wrap [operation taggables idx]
+(defn squash-wrap
+  [operation taggables idx]
   (if (and (nth taggables (+ 1 idx) false) ; merge idx and (1+idx)th entries
            (or (= operation :squash) (= operation :wrap)))
     (let [[left right] (split-at idx taggables)
@@ -62,8 +63,8 @@
           middle (make-taggable (str (:raw-text a) (:raw-text b))
                                 (into (:morphemes a) (:morphemes b))
                                 []
-                                (if (= operation :squash) 
-                                  [] 
+                                (if (= operation :squash)
+                                  []
                                   [a b]))]
       (apply conj (vec left) middle right))
     ; TODO just return the original input if either/both argument checks fail?
@@ -72,21 +73,21 @@
 (def squash (partial squash-wrap :squash))
 (def wrap (partial squash-wrap :wrap))
 
-(defn unwrap-in-tagged-parse
-  [taggables idx]
-  (let [[left right] (split-at idx taggables)
-        wrapped (first right)
-        right (rest right)
-        unwrapped (:children wrapped)]
-    (into [] (concat left unwrapped right))))
+(defn unsquash-unwrap
+  [operation taggables idx]
+  (if (and (nth taggables idx false)
+           (or (= operation :unsquash) (= operation :unwrap)))
+    (let [[left right] (split-at idx taggables)
+          wrapped-or-squashed (first right)
+          right (rest right)
+          unwrapped-or-unsquashed (if (= operation :unwrap)
+                      (:children wrapped-or-squashed)
+                      (init-tagged-parse {:words (:morphemes wrapped-or-squashed)}))]
+      (into [] (concat left unwrapped-or-unsquashed right)))
+    taggables))
 
-(defn unsquash-in-tagged-parse
-  [taggables idx]
-  (let [[left right] (split-at idx taggables)
-        squashed (nth taggables idx)
-        right (rest right)
-        unsquashed (init-tagged-parse {:words (:morphemes squashed)})]
-    (into [] (concat left unsquashed right))))
+(def unwrap-in-tagged-parse (partial unsquash-unwrap :unwrap))
+(def unsquash-in-tagged-parse (partial unsquash-unwrap :unsquash))
 
 ;; localStorage-wrangling middleware
 
