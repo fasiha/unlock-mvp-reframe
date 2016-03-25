@@ -46,12 +46,16 @@
        " - "
        (string/join "/" conjugation)])))
 
-(defn render-entry
-  [{:keys [k_ele r_ele sense ent_seq] :as entry}]
+(defn entry-to-headwords
+  [{:keys [k_ele r_ele] :as entry}]
   (let [kanjis (map :keb k_ele)
         readings (map :reb r_ele)
-        titles (concat kanjis readings)
-        title (string/join "・" titles)]
+        titles (concat kanjis readings)]
+    (string/join "・" titles)))
+
+(defn render-entry
+  [{:keys [k_ele r_ele sense ent_seq] :as entry}]
+  (let [title (entry-to-headwords entry)]
     [:div title
      [:ul
       (map-indexed
@@ -64,9 +68,22 @@
         sense)]
      ]))
 
+(defn entry-to-sense-via-num
+  [entry sense-num]
+  (-> entry
+      :sense
+      (nth sense-num)
+      :gloss
+      (->> (string/join "； "))))
+
 (defn render-tag
   [tag]
-  [:div.tag "yo" ])
+  (let [entry (-> tag :tag :entry)
+        sense-num (-> tag :tag :sense)]
+    [:div.tag
+     (entry-to-headwords entry)
+     " ⇒ "
+     (entry-to-sense-via-num entry sense-num)]))
 
 
 (defn morphemes-joinable? [a b]
@@ -187,10 +204,16 @@
            ^{:key (str idx (:raw-text taggable))}
            [:li
             (:raw-text taggable)
+            ; [:sub (str (:path taggable))]
             [:button {:onClick #(r/dispatch [:ask-for-lookup taggable])} "jmdict"]
             (if (-> taggable :tags empty? not)
               [:ul
-               [:li "tagged"]])])
+               (map-indexed
+                 (fn [tag-idx tag]
+                   ^{:key (str idx "tag" tag-idx)}
+                   [:li (render-tag tag)])
+                 (:tags taggable))
+               ])])
          (->> sentence
               :tagged-parse
               flatten-taggables
