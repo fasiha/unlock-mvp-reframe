@@ -76,14 +76,19 @@
       :gloss
       (->> (string/join "； "))))
 
+(defn render-jmdict-tag
+  [{:keys [entry sense-number]}]
+  [:div.tag
+   (entry-to-headwords entry)
+   " ⇒ "
+   (entry-to-sense-via-num entry sense-number)])
+
 (defn render-tag
-  [tag]
-  (let [entry (-> tag :tag :entry)
-        sense-num (-> tag :tag :sense)]
-    [:div.tag
-     (entry-to-headwords entry)
-     " ⇒ "
-     (entry-to-sense-via-num entry sense-num)]))
+  [{:keys [tag source]}]
+  (condp = source
+    :jmdict (render-jmdict-tag tag)
+    [:div (pr-str tag)])
+  )
 
 
 (defn morphemes-joinable? [a b]
@@ -205,15 +210,31 @@
            [:li
             (:raw-text taggable)
             ; [:sub (str (:path taggable))]
+
+            ; Buttons
             [:button {:onClick #(r/dispatch [:ask-for-lookup taggable])} "jmdict"]
+
+            ; Tags
             (if (-> taggable :tags empty? not)
-              [:ul
-               (map-indexed
-                 (fn [tag-idx tag]
-                   ^{:key (str idx "tag" tag-idx)}
-                   [:li (render-tag tag)])
-                 (:tags taggable))
-               ])])
+              [:div.tag-list "Tags"
+               [:ul
+                (map-indexed
+                  (fn [tag-idx tag]
+                    ^{:key (str idx "tag" tag-idx)}
+                    [:li (render-tag tag)])
+                  (:tags taggable))
+                ]])
+
+
+            ; morphemes
+            [:div.morpheme-list "Morphemes "
+             [:ol
+             (map-indexed
+               (fn [m-idx morpheme]
+                 ^{:key (str idx "m" m-idx)}
+                 [:li.morpheme-in-taggable (render-morpheme morpheme)])
+               (:morphemes taggable))]]
+            ])
          (->> sentence
               :tagged-parse
               flatten-taggables
@@ -264,6 +285,7 @@
 
 (defn make-css []
   (css [
+        [:.morpheme-list {:font-size "small"}]
         ;[:.taggable {:padding "0.5em"}]
         [:.taggables:hover {:background-color "rgb(240,240,240)"}]
         [:.taggables {:padding "0.5em"}]

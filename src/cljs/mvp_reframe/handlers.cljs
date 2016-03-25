@@ -137,5 +137,5 @@
       (update-in
         db
         full-path
-        conj ,,, {:source :jmdict :tag {:entry entry :sense sense-number}}))))
+        conj ,,, {:source :jmdict :tag {:entry entry :sense-number sense-number}}))))
 
