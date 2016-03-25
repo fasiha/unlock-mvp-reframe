@@ -34,3 +34,16 @@ code, let me know!
 lein clean
 lein cljsbuild once min
 ```
+
+# Issues
+
+Delete tags.
+Add grammar tags.
+Free-form JMdict search.
+
+Backend sync.
+
+Authentication/authorization.
+
+Document editor:
+Enable "show new items".
