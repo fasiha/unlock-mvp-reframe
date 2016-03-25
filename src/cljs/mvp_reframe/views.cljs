@@ -55,12 +55,19 @@
     [:div title
      [:ul
       (map-indexed
-        (fn [n a-sense]
-          ^{:key (str ent_seq "," n)}
+        (fn [sense-num a-sense]
+          ^{:key (str ent_seq "," sense-num)}
           [:li (->> a-sense :gloss (string/join "； "))
-           [:button.tag-button "tag"]])
+           [:button.tag-button
+            {:onClick #(r/dispatch [:tag-lexeme-with-jmdict headword sense-num])}
+            "tag"]])
         sense)]
      ]))
+
+(defn render-tag
+  [tag]
+  [:div.tag "yo" ])
+
 
 (defn morphemes-joinable? [a b]
   (let [apos (get-in a [:pos 0])
@@ -143,27 +150,59 @@
                       {:onClick #(r/dispatch [:unwrap-tagged-parse idx-in-parent])}
                       "unwrap"])]))
 
+
+(defn pathed-taggable-to-pathed-children [taggable]
+  (map-indexed #(assoc %2 :path (conj (:path taggable) %1)) (:children taggable)))
+
+(defn flatten-taggables
+  ([taggables]
+   (flatten-taggables
+     (mapv #(assoc %1 :path [%2])
+           taggables
+           (range (count taggables))) true))
+  ([taggables with-path?]
+   (if (and (-> taggables empty? not) (every? identity taggables))
+     (into taggables
+           (flatten-taggables
+             (mapcat pathed-taggable-to-pathed-children taggables)
+             with-path?)))))
+
+
 (defn sentence-surgeon-panel []
   [:div.sentence-surgeon
    [:h3 "Sentence Surgeon"]
    (if-let [sentence (deref (r/subscribe [:sentence-for-surgery]))]
      [:div
+      ; Display the original sentence
       [:div.original-sentence (str (:japanese sentence))]
 
+      ; Render it with nested taggables, allowing user to fuse/wrap or
+      ; unfuse/unwrap
       [:div (render-taggables 0 (:tagged-parse sentence))]
 
-      ; #_[:ul
-      ;  (for [lexeme (:tagged-parse sentence)
-      ;        :when (-> lexeme :morphemes first :pos first blacklisted-pos not)]
-      ;    ^{:key (get-in lexeme [:morphemes 0 :position])}
-      ;    [:li (:raw-text lexeme)
-      ;     [:button {:onClick #(r/dispatch [:ask-for-lookup lexeme])} "lookup"]
-      ;     (into [] (concat
-      ;                [:ul]
-      ;                (map (fn [morpheme]
-      ;                       [:li (render-morpheme morpheme)])
-      ;                     (:morphemes lexeme))))])]
+      ; A list of taggables, with tags and the ability to add more tags
+      [:ul
+       (map-indexed
+         (fn [idx taggable]
+           ^{:key (str idx (:raw-text taggable))}
+           [:li
+            (:raw-text taggable)
+            [:button {:onClick #(r/dispatch [:ask-for-lookup taggable])} "jmdict"]
+            (if (-> taggable :tags empty? not)
+              [:ul
+               [:li "tagged"]])])
+         (->> sentence
+              :tagged-parse
+              flatten-taggables
+              (filter #(-> %
+                           :morphemes
+                           first
+                           :pos
+                           first
+                           blacklisted-pos
+                           not))))]
 
+      ; The results of JMdict lookups
       (let [headwords @(r/subscribe [:jmdict-headwords])
             lexeme-lookup @(r/subscribe [:lexeme-being-looked-up])]
         [:div

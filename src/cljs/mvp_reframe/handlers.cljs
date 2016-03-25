@@ -132,4 +132,10 @@
   :tag-lexeme-with-jmdict
   middlewares
   (fn [db [_ headword sense-number]]
-    db #_(update-in db [:sentences (:sentence-id-surgery db) :tagged-parse ])))
+    (let [path (drop-last (interleave (:path (:lexeme-being-looked-up db)) (repeat :children)))
+          full-path (concat [:sentences (:sentence-id-surgery db) :tagged-parse] path [:tags])]
+      (update-in
+        db
+        full-path
+        conj ,,, {:source :jmdict :tag {:headword headword :sense sense-number}}))))
+
