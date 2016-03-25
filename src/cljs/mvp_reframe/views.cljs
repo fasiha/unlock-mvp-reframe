@@ -46,8 +46,8 @@
        " - "
        (string/join "/" conjugation)])))
 
-(defn render-headword
-  [{:keys [k_ele r_ele sense ent_seq] :as headword}]
+(defn render-entry
+  [{:keys [k_ele r_ele sense ent_seq] :as entry}]
   (let [kanjis (map :keb k_ele)
         readings (map :reb r_ele)
         titles (concat kanjis readings)
@@ -59,7 +59,7 @@
           ^{:key (str ent_seq "," sense-num)}
           [:li (->> a-sense :gloss (string/join "； "))
            [:button.tag-button
-            {:onClick #(r/dispatch [:tag-lexeme-with-jmdict headword sense-num])}
+            {:onClick #(r/dispatch [:tag-lexeme-with-jmdict entry sense-num])}
             "tag"]])
         sense)]
      ]))
@@ -203,16 +203,16 @@
                            not))))]
 
       ; The results of JMdict lookups
-      (let [headwords @(r/subscribe [:jmdict-headwords])
+      (let [entries @(r/subscribe [:jmdict-entries])
             lexeme-lookup @(r/subscribe [:lexeme-being-looked-up])]
         [:div
          [:h4 "JMDICT lookup"]
          [:p "Looking up: " (:raw-text lexeme-lookup)]
          [:ul (map
-                (fn [headword]
-                  ^{:key (:ent_seq headword)}
-                  [:li (render-headword headword)])
-                headwords)]])
+                (fn [entry]
+                  ^{:key (:ent_seq entry)}
+                  [:li (render-entry entry)])
+                entries)]])
 
       ]
      [:div "…"])])

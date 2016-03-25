@@ -7,7 +7,7 @@
    :sentences (sorted-map) ; sorted-set: integer keys and values per default-sentence schema
    :sentence-id-surgery -1 ; integer key for sentence being edited (surgery)
    :lexeme-being-looked-up {} ; a lexeme in the sentence being edited to look up in JMdict
-   :jmdict-headwords [] ; server response: JMdict headwords matching a given lexeme/morpheme
+   :jmdict-entries [] ; server response: JMdict entries matching a given lexeme/morpheme
    })
 
 (def default-sentence {:id -1           ; unique, currently int, FIXME make this UUID
