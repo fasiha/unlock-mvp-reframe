@@ -38,6 +38,7 @@ lein cljsbuild once min
 # Issues
 
 Delete tags.
+Allow only a single JMdict tag (?)
 Add grammar tags.
 Free-form JMdict search.
 

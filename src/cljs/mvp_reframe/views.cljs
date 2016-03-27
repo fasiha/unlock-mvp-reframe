@@ -110,27 +110,29 @@
         render-one
         (fn [level taggable idx]
           (if debug? (println "render-one"
-                   (str level ","
-                        (-> taggable :morphemes first :position))
-                   (-> taggable :raw-text)
-                   "idx" idx))
-          (if (-> taggable :children empty?)
-            ; CASE 1: no children: render the taggable
-            ^{:key (str level "," (-> taggable :morphemes first :position))}
-            [:span.taggable
-             "["
-             (:raw-text taggable)
-             "]"
-             (if (and (= level 0)
-                      (-> taggable :morphemes count (not= 1)))
-               [:button {:onClick #(r/dispatch [:unfuse-tagged-parse idx])} "unfuse"])]
+                              (str level ","
+                                   (-> taggable :morphemes first :position))
+                              (-> taggable :raw-text)
+                              "idx" idx))
+          ^{:key (str level "," (-> taggable :morphemes first :position))}
+          [:span.taggable (if (-> taggable :morphemes first :pos first blacklisted-pos not)
+                            {:className "raw-text"})
+           (if (-> taggable :children empty?)
 
-            ; CASE 2: pass non-empty (thus >=2-long) vector of child taggables
-            ; to render-taggables
-            (render-taggables (+ 1 level) (:children taggable) idx)))]
+             ; CASE 1: no children: render the taggable
+             [:span.taggable
+              (:raw-text taggable)
+              (if (and (= level 0)
+                       (-> taggable :morphemes count (not= 1)))
+                [:button {:onClick #(r/dispatch [:unfuse-tagged-parse idx])} "unfuse"])]
+
+             ; CASE 2: pass non-empty (thus >=2-long) vector of child taggables
+             ; to render-taggables
+             (render-taggables (+ 1 level) (:children taggable) idx))
+           ]
+          )]
     ^{:key level}
     [:span.taggables
-     "{"
      (mapcat
        (fn [taggable next-taggable idx]
          [; First, render the taggable:
@@ -165,7 +167,6 @@
        taggables
        (-> taggables (subvec ,,, 1) (conj ,,, nil))
        (range num-taggables))
-     "}"
      ; A vector of taggables should be unwrappable, unless it's the very
      ; top-level
      (if (= level 1) [:button
@@ -173,22 +174,35 @@
                       "unwrap"])]))
 
 
-(defn pathed-taggable-to-pathed-children [taggable]
-  (map-indexed #(assoc %2 :path (conj (:path taggable) %1)) (:children taggable)))
+(defn pathed-taggable-to-pathed-children
+  "Given a taggable with a :path, return its :children as a vector of taggables
+  with their own :path key populated."
+  [taggable]
+  (map-indexed
+    #(assoc %2 :path (conj (:path taggable) %1))
+    (:children taggable)))
 
 (defn flatten-taggables
+  "Given a vector of taggables, any of whose elements might have a :children key
+  containing another vector of taggables, return a flattened vector of taggables
+  including the descendants of the input. Each taggable in the output will
+  contain a :path key, whose value is a vector of integers that specifies that
+  taggable's position in the family tree. A user should use the 1-arity
+  function. The 2-arity function is used internally."
   ([taggables]
-   (flatten-taggables
+   (flatten-taggables ; call the 2-arity function after adding :path to input
      (mapv #(assoc %1 :path [%2])
            taggables
-           (range (count taggables))) true))
+           (range (count taggables)))
+     true))
   ([taggables with-path?]
    (if (and (-> taggables empty? not) (every? identity taggables))
+     ; mapcat, when a function returns nil, leaves it out of the output, so the
+     ; above guard check will trigger on the `empty?`.
      (into taggables
            (flatten-taggables
              (mapcat pathed-taggable-to-pathed-children taggables)
              with-path?)))))
-
 
 (defn sentence-surgeon-panel []
   [:div.sentence-surgeon
@@ -207,7 +221,7 @@
        (map-indexed
          (fn [idx taggable]
            ^{:key (str idx (:raw-text taggable))}
-           [:li
+           [:li.tags-and-morphemes
             (:raw-text taggable)
             ; [:sub (str (:path taggable))]
 
@@ -285,11 +299,17 @@
 
 (defn make-css []
   (css [
-        [:.morpheme-list {:font-size "small"}]
-        ;[:.taggable {:padding "0.5em"}]
-        [:.taggables:hover {:background-color "rgb(240,240,240)"}]
-        [:.taggables {:padding "0.5em"}]
-        [:.taggable:hover {:background-color "rgb(225,225,225)"}]
+        [:div.sentence-japanese-translation {:white-space "pre-line"}]
+        ;[:div.sentence-surgeon {:line-height 1.6}]
+        [:div.tag-list :div.morpheme-list
+         {:margin "0.25em 0.25em 0.25em 1em"
+          :padding "0.1em"
+          :border "1px lightgray dotted"}]
+        [:li.tags-and-morphemes {:padding-bottom "1em"}]
+        [:div.tag-list :div.morpheme-list
+         {:font-size "small"}]
+        [:.raw-text::before {:content "\"[\""}]
+        [:.raw-text::after {:content "\"]\""}]
         [:.original-sentence :.sentence-split-merge {:white-space "pre-wrap"}]
         [:.separator :.unseparator {:color "lightgray"}]]))
 
@@ -297,7 +317,7 @@
   (let []
     (fn []
       [:div
-       [:style (make-css)]
+       [:style {:dangerouslySetInnerHTML {:__html (make-css) }}]
        [:h2 "Sentence Editor"]
        [:p "Enter Japanese and an optional translation below. Separate sentences with two newlines."]
        [sentence-editor-panel]
