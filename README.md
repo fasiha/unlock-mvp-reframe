@@ -37,6 +37,8 @@ lein cljsbuild once min
 
 # Issues
 
+Correct furigana.
+
 Delete tags.
 Allow only a single JMdict tag (?)
 Add grammar tags.

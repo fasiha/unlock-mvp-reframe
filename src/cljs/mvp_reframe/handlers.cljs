@@ -139,3 +139,15 @@
         full-path
         conj ,,, {:source :jmdict :tag {:entry entry :sense-number sense-number}}))))
 
+(defn drop-nth-vec [v n] (into (subvec v 0 n) (subvec v (+ n 1) (count v))))
+(re-frame/register-handler
+  :delete-tag
+  middlewares
+  (fn [db [_ taggable tag-idx]]
+    (let [path (drop-last (interleave (:path taggable) (repeat :children)))
+          full-path (concat [:sentences (:sentence-id-surgery db) :tagged-parse] path [:tags])]
+      (update-in
+        db
+        full-path
+        drop-nth-vec ,,, tag-idx))))
+

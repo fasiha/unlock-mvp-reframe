@@ -78,7 +78,7 @@
 
 (defn render-jmdict-tag
   [{:keys [entry sense-number]}]
-  [:div.tag
+  [:span.tag
    (entry-to-headwords entry)
    " ⇒ "
    (entry-to-sense-via-num entry sense-number)])
@@ -87,7 +87,7 @@
   [{:keys [tag source]}]
   (condp = source
     :jmdict (render-jmdict-tag tag)
-    [:div (pr-str tag)])
+    [:span (pr-str tag)])
   )
 
 
@@ -235,7 +235,11 @@
                 (map-indexed
                   (fn [tag-idx tag]
                     ^{:key (str idx "tag" tag-idx)}
-                    [:li (render-tag tag)])
+                    [:li (render-tag tag)
+                     [:button
+                      {:onClick #(r/dispatch
+                                   [:delete-tag taggable tag-idx])}
+                      "×"]])
                   (:tags taggable))
                 ]])
 
@@ -300,7 +304,6 @@
 (defn make-css []
   (css [
         [:div.sentence-japanese-translation {:white-space "pre-line"}]
-        ;[:div.sentence-surgeon {:line-height 1.6}]
         [:div.tag-list :div.morpheme-list
          {:margin "0.25em 0.25em 0.25em 1em"
           :padding "0.1em"

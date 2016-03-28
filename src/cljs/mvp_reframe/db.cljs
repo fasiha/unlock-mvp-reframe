@@ -17,10 +17,10 @@
                        :tagged-parse [] ; vector of elements following default-tagged-parse schema
                        })
 
-(def default-tagged-parse {:children []  ; list containing other maps like this (recursive)
-                           :tags []      ; list of tags
+(def default-tagged-parse {:children []  ; vec containing other maps like this (recursive)
+                           :tags []      ; vec of tags
                            :raw-text ""  ; raw string
-                           :morphemes [] ; list of UniDic morphemes, like :raw-parse above
+                           :morphemes [] ; vec of UniDic morphemes, like :raw-parse above
                            })
 
 ;; Helper functions
