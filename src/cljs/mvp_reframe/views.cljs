@@ -204,6 +204,22 @@
              (mapcat pathed-taggable-to-pathed-children taggables)
              with-path?)))))
 
+(defn make-ruby
+  ([base furigana]
+   (make-ruby base furigana "[" "]"))
+  ([base furigana left right]
+   [:ruby base
+    [:rp left]
+    [:rt furigana]
+    [:rp right]]))
+
+(defn taggable-to-ruby [{:keys [raw-text morphemes] :as taggable}]
+  (if (kana/any-kanji? raw-text)
+    (make-ruby
+      raw-text
+      (->> morphemes (map :literal_pronunciation) (apply str) kana/katakana-to-hiragana))
+    raw-text))
+
 (defn sentence-surgeon-panel []
   [:div.sentence-surgeon
    [:h3 "Sentence Surgeon"]
@@ -222,8 +238,7 @@
          (fn [idx taggable]
            ^{:key (str idx (:raw-text taggable))}
            [:li.tags-and-morphemes
-            (:raw-text taggable)
-            ; [:sub (str (:path taggable))]
+            (taggable-to-ruby taggable)
 
             ; Buttons
             [:button {:onClick #(r/dispatch [:ask-for-lookup taggable])} "jmdict"]
