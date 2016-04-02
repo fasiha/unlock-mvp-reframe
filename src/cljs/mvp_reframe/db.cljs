@@ -21,8 +21,8 @@
                            :tags []      ; vec of tags
                            :raw-text ""  ; raw string
                            :morphemes [] ; vec of UniDic morphemes, like :raw-parse above
+                           :path []      ; vec of integers: descent tree from the sentence
                            })
-; TODO add :path, populated in init & updated through wrap/fuse
 ; TODO add :furigana?
 
 ;; Helper functions
