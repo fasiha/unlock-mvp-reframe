@@ -55,38 +55,72 @@
                                                         :morphemes morphemes
                                                         :tags tags
                                                         :children children})
+(defn flatten-taggables [taggables]
+  (if (and (-> taggables empty? not) (every? identity taggables))
+     (into taggables (flatten-taggables (mapcat :children taggables)))))
+
+(defn pathed-taggable-to-pathed-children
+  "Given a taggable with a :path, return its :children as a vector of taggables
+  with their own :path key populated."
+  [taggable]
+  (map-indexed
+    #(assoc %2 :path (conj (:path taggable) %1))
+    (:children taggable)))
+
+(defn add-paths-to-taggables
+  "Given a vector of taggables, any of whose elements might have a :children key
+  containing another vector of taggables, return a flattened vector of taggables
+  including the descendants of the input. A user should use the 1-arity
+  function. The 2-arity function is used internally."
+  ([taggables]
+   (add-paths-to-taggables ; call the 2-arity function after adding :path to input
+     (mapv #(assoc %1 :path [%2])
+           taggables
+           (range (count taggables)))
+     true))
+  ([taggables with-path?]
+   (if (and (-> taggables empty? not) (every? identity taggables))
+     (mapv #(assoc % :children
+                   (-> %
+                       pathed-taggable-to-pathed-children
+                       (add-paths-to-taggables ,,, true)))
+           taggables)
+     [])))
+
 (defn fuse-wrap
   [operation taggables idx]
-  (if (and (nth taggables (+ 1 idx) false) ; merge idx and (1+idx)th entries
-           (or (= operation :fuse) (= operation :wrap)))
-    (let [[left right] (split-at idx taggables)
-          [a b] (take 2 right)
-          right (drop 2 right)
-          middle (make-taggable (str (:raw-text a) (:raw-text b))
-                                (into (:morphemes a) (:morphemes b))
-                                []
-                                (if (= operation :fuse)
+  (add-paths-to-taggables
+    (if (and (nth taggables (+ 1 idx) false) ; merge idx and (1+idx)th entries
+             (or (= operation :fuse) (= operation :wrap)))
+      (let [[left right] (split-at idx taggables)
+            [a b] (take 2 right)
+            right (drop 2 right)
+            middle (make-taggable (str (:raw-text a) (:raw-text b))
+                                  (into (:morphemes a) (:morphemes b))
                                   []
-                                  [a b]))]
-      (apply conj (vec left) middle right))
-    ; TODO just return the original input if either/both argument checks fail?
-    taggables))
+                                  (if (= operation :fuse)
+                                    []
+                                    [a b]))]
+        (apply conj (vec left) middle right))
+      ; TODO just return the original input if either/both argument checks fail?
+      taggables)))
 
 (def fuse (partial fuse-wrap :fuse))
 (def wrap (partial fuse-wrap :wrap))
 
 (defn unfuse-unwrap
   [operation taggables idx]
-  (if (and (nth taggables idx false)
-           (or (= operation :unfuse) (= operation :unwrap)))
-    (let [[left right] (split-at idx taggables)
-          wrapped-or-fuseed (first right)
-          right (rest right)
-          unwrapped-or-unfuseed (if (= operation :unwrap)
-                      (:children wrapped-or-fuseed)
-                      (init-tagged-parse {:words (:morphemes wrapped-or-fuseed)}))]
-      (into [] (concat left unwrapped-or-unfuseed right)))
-    taggables))
+  (add-paths-to-taggables
+    (if (and (nth taggables idx false)
+             (or (= operation :unfuse) (= operation :unwrap)))
+      (let [[left right] (split-at idx taggables)
+            wrapped-or-fuseed (first right)
+            right (rest right)
+            unwrapped-or-unfuseed (if (= operation :unwrap)
+                                    (:children wrapped-or-fuseed)
+                                    (init-tagged-parse {:words (:morphemes wrapped-or-fuseed)}))]
+        (into [] (concat left unwrapped-or-unfuseed right)))
+      taggables)))
 
 (def unwrap-in-tagged-parse (partial unfuse-unwrap :unwrap))
 (def unfuse-in-tagged-parse (partial unfuse-unwrap :unfuse))

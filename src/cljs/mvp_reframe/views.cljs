@@ -3,6 +3,7 @@
             [clojure.string :as string]
             [garden.core :refer [css]]
             [mvp-reframe.kana-kanji :as kana]
+            [mvp-reframe.db :as db]
             [mvp-reframe.config :as config :refer [debug?]]))
 
 (defn new-sentences-panel []
@@ -173,37 +174,6 @@
                       {:onClick #(r/dispatch [:unwrap-tagged-parse idx-in-parent])}
                       "unwrap"])]))
 
-
-(defn pathed-taggable-to-pathed-children
-  "Given a taggable with a :path, return its :children as a vector of taggables
-  with their own :path key populated."
-  [taggable]
-  (map-indexed
-    #(assoc %2 :path (conj (:path taggable) %1))
-    (:children taggable)))
-
-(defn flatten-taggables
-  "Given a vector of taggables, any of whose elements might have a :children key
-  containing another vector of taggables, return a flattened vector of taggables
-  including the descendants of the input. Each taggable in the output will
-  contain a :path key, whose value is a vector of integers that specifies that
-  taggable's position in the family tree. A user should use the 1-arity
-  function. The 2-arity function is used internally."
-  ([taggables]
-   (flatten-taggables ; call the 2-arity function after adding :path to input
-     (mapv #(assoc %1 :path [%2])
-           taggables
-           (range (count taggables)))
-     true))
-  ([taggables with-path?]
-   (if (and (-> taggables empty? not) (every? identity taggables))
-     ; mapcat, when a function returns nil, leaves it out of the output, so the
-     ; above guard check will trigger on the `empty?`.
-     (into taggables
-           (flatten-taggables
-             (mapcat pathed-taggable-to-pathed-children taggables)
-             with-path?)))))
-
 (defn make-ruby
   ([base furigana]
    (make-ruby base furigana "[" "]"))
@@ -270,7 +240,7 @@
             ])
          (->> sentence
               :tagged-parse
-              flatten-taggables
+              db/flatten-taggables
               (filter #(-> %
                            :morphemes
                            first
