@@ -38,7 +38,6 @@ lein cljsbuild once min
 # Issues
 
 Correct furigana.
-Add grammar tags.
 Search JMdict for adjacent sequences of morphemes.
 
 Allow only a single JMdict tag (?)

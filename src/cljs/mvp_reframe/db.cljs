@@ -6,8 +6,11 @@
    :new-translation "" ; translation textbox
    :sentences (sorted-map) ; sorted-set: integer keys and values per default-sentence schema
    :sentence-id-surgery -1 ; integer key for sentence being edited (surgery)
-   :lexeme-being-looked-up {} ; a lexeme in the sentence being edited to look up in JMdict
-   :jmdict-entries [] ; server response: JMdict entries matching a given lexeme/morpheme
+   :taggable-being-tagged {} ; the taggable being tagged in the sentence being edited
+   :tags-results {:source nil
+                  :entries []} ; possible tags for a given taggable (JMdict, grammar, etc.)
+   :grammar-entries [] ; vector (sorted-map better?) of possible grammar tags
+   :new-grammar-entry "" ; textbox for new grammar topic
    })
 
 (def default-sentence {:id -1           ; unique, currently int, FIXME make this UUID
@@ -24,6 +27,9 @@
                            :path []      ; vec of integers: descent tree from the sentence
                            })
 ; TODO add :furigana?
+
+(def default-grammar-topic {:id :unknown ; keyword
+                            :name ""})   ; string
 
 ;; Helper functions
 
@@ -50,6 +56,11 @@
   (mapv #(merge default-tagged-parse
                 {:raw-text (:literal %) :morphemes [%]})
         (:words raw-parse)))
+
+
+(defn make-jmdict-tag [entry sense-number]
+  {:source :jmdict :tag {:entry entry :sense-number sense-number}})
+(defn make-grammar-tag [entry] {:source :grammar :tag {:entry entry}})
 
 (defn make-taggable [raw-text morphemes tags children] {:raw-text raw-text
                                                         :morphemes morphemes

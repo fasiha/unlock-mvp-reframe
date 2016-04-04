@@ -108,36 +108,63 @@
     (update-in db [:sentences (:sentence-id-surgery db) :tagged-parse] db/unfuse-in-tagged-parse ,,, idx)))
 
 (re-frame/register-handler
-  :ask-for-lookup
+  :ask-for-jmdict-lookup
   middlewares
-  (fn [db [_ lexeme]]
+  (fn [db [_ taggable]]
     (xhr/send "/jmdict"                                      ; URL
               #(re-frame/dispatch                            ; callback
                  [:lookup-response (-> % .-target .getResponseText my-transit-reader)])
               "POST"                                         ; HTTP method
-              (my-transit-writer lexeme)                     ; POST payload
+              (my-transit-writer taggable)                   ; POST payload
               #js {"Content-Type" "application/transit+json" ; HTTP request headers
                    "Accept" "application/transit+json, */*"})
     (assoc db
-           :lexeme-being-looked-up lexeme
-           :jmdict-entries (:jmdict-entries db/default-db))))
+           :taggable-being-tagged taggable
+           :tags-results (:tags-results db/default-db))))
+
+(re-frame/register-handler
+  :ask-for-grammar-lookup
+  middlewares
+  (fn [db [_ taggable]]
+    (assoc db
+           :taggable-being-tagged taggable
+           :tags-results {:source :grammar
+                          :entries []})))
+
+(re-frame/register-handler
+  :new-grammar-entry
+  middlewares
+  (fn [db [_ text]]
+    (update-in
+      db
+      [:grammar-entries]
+      conj ,,, {:id (keyword text) :name text})))
 
 (re-frame/register-handler
   :lookup-response
   middlewares
   (fn [db [_ entries]]
-    (assoc db :jmdict-entries entries)))
+    (assoc db :tags-results {:source :jmdict :entries entries})))
+
+(defn tag-taggable [db tag]
+  (let [path (drop-last (interleave (:path (:taggable-being-tagged db)) (repeat :children)))
+        full-path (concat [:sentences (:sentence-id-surgery db) :tagged-parse] path [:tags])]
+    (update-in
+      db
+      full-path
+      conj ,,, tag)))
 
 (re-frame/register-handler
-  :tag-lexeme-with-jmdict
+  :tag-taggable-with-grammar
+  middlewares
+  (fn [db [_ grammar-entry]]
+    (tag-taggable db (db/make-grammar-tag grammar-entry))))
+
+(re-frame/register-handler
+  :tag-taggable-with-jmdict
   middlewares
   (fn [db [_ entry sense-number]]
-    (let [path (drop-last (interleave (:path (:lexeme-being-looked-up db)) (repeat :children)))
-          full-path (concat [:sentences (:sentence-id-surgery db) :tagged-parse] path [:tags])]
-      (update-in
-        db
-        full-path
-        conj ,,, {:source :jmdict :tag {:entry entry :sense-number sense-number}}))))
+    (tag-taggable db (db/make-jmdict-tag entry sense-number))))
 
 (defn drop-nth-vec [v n] (into (subvec v 0 n) (subvec v (+ n 1) (count v))))
 (re-frame/register-handler

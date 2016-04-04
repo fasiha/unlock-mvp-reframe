@@ -54,7 +54,7 @@
         titles (concat kanjis readings)]
     (string/join "・" titles)))
 
-(defn render-entry
+(defn render-jmdict-entry
   [{:keys [k_ele r_ele sense ent_seq] :as entry}]
   (let [title (entry-to-headwords entry)]
     [:div title
@@ -64,7 +64,7 @@
           ^{:key (str ent_seq "," sense-num)}
           [:li (->> a-sense :gloss (string/join "； "))
            [:button.tag-button
-            {:onClick #(r/dispatch [:tag-lexeme-with-jmdict entry sense-num])}
+            {:onClick #(r/dispatch [:tag-taggable-with-jmdict entry sense-num])}
             "tag"]])
         sense)]
      ]))
@@ -79,7 +79,7 @@
 
 (defn render-jmdict-tag
   [{:keys [entry sense-number]}]
-  [:span.tag
+  [:span.tag.jmdict
    (entry-to-headwords entry)
    " ⇒ "
    (entry-to-sense-via-num entry sense-number)])
@@ -88,9 +88,8 @@
   [{:keys [tag source]}]
   (condp = source
     :jmdict (render-jmdict-tag tag)
-    [:span (pr-str tag)])
-  )
-
+    :grammar [:span.tag.grammar (-> tag :entry :name)]
+    , [:span (pr-str tag)]))
 
 (defn morphemes-joinable? [a b]
   (let [apos (get-in a [:pos 0])
@@ -98,7 +97,7 @@
     (not (or (blacklisted-pos apos)
              (blacklisted-pos bpos)))))
 
-(defn render-taggables
+(defn render-taggables-as-sentence
   "An outer function should call this with level=0 and an arbitrarily-long
   vector of taggables (& third argument idx-in-parent as nil). If/when the
   function recurses, level will be >0, taggables will have >=2 elements, and
@@ -106,11 +105,12 @@
   has children: idx-in-parent will then be the index of the taggable with
   children in its own list of siblings."
   [level taggables & [idx-in-parent]]
-  (if debug? (println "render-taggables" (map :raw-text taggables) "level" level "idx-in-parent" idx-in-parent))
+  #_(if debug? (println "render-taggables-as-sentence"
+                        (map :raw-text taggables) "level" level "idx-in-parent" idx-in-parent))
   (let [num-taggables (count taggables)
         render-one
         (fn [level taggable idx]
-          (if debug? (println "render-one"
+          #_(if debug? (println "render-one"
                               (str level ","
                                    (-> taggable :morphemes first :position))
                               (-> taggable :raw-text)
@@ -128,8 +128,8 @@
                 [:button {:onClick #(r/dispatch [:unfuse-tagged-parse idx])} "unfuse"])]
 
              ; CASE 2: pass non-empty (thus >=2-long) vector of child taggables
-             ; to render-taggables
-             (render-taggables (+ 1 level) (:children taggable) idx))
+             ; to render-taggables-as-sentence
+             (render-taggables-as-sentence (+ 1 level) (:children taggable) idx))
            ]
           )]
     ^{:key level}
@@ -190,6 +190,59 @@
       (->> morphemes (map :literal_pronunciation) (apply str) kana/katakana-to-hiragana))
     raw-text))
 
+(defn render-taggables-as-list [sentence]
+  [:ul
+   (map-indexed
+     (fn [idx taggable]
+       ^{:key (str idx (:raw-text taggable))}
+       [:li.tags-and-morphemes
+        (taggable-to-ruby taggable)
+
+        ; Buttons
+        [:button {:onClick #(r/dispatch [:ask-for-jmdict-lookup taggable])} "jmdict"]
+        [:button {:onClick #(r/dispatch [:ask-for-grammar-lookup taggable])} "grammar"]
+
+        ; Tags
+        (if (-> taggable :tags empty? not)
+          [:div.tag-list "Tags"
+           [:ul
+            (map-indexed
+              (fn [tag-idx tag]
+                ^{:key (str idx "tag" tag-idx)}
+                [:li (render-tag tag)
+                 [:button
+                  {:onClick #(r/dispatch
+                               [:delete-tag taggable tag-idx])}
+                  "×"]])
+              (:tags taggable))
+            ]])
+
+
+        ; morphemes
+        [:div.morpheme-list "Morphemes "
+         [:ol
+          (map-indexed
+            (fn [m-idx morpheme]
+              ^{:key (str idx "m" m-idx)}
+              [:li.morpheme-in-taggable (render-morpheme morpheme)])
+            (:morphemes taggable))]]
+        ])
+     (->> sentence
+          :tagged-parse
+          db/flatten-taggables
+          (filter #(-> %
+                       :morphemes
+                       first
+                       :pos
+                       first
+                       blacklisted-pos
+                       not))))])
+
+(defn render-grammar-entry [entry]
+  [:div (:name entry)
+   [:button {:onClick #(r/dispatch [:tag-taggable-with-grammar entry])} "tag"]
+   ])
+
 (defn sentence-surgeon-panel []
   [:div.sentence-surgeon
    [:h3 "Sentence Surgeon"]
@@ -200,66 +253,43 @@
 
       ; Render it with nested taggables, allowing user to fuse/wrap or
       ; unfuse/unwrap
-      [:div (render-taggables 0 (:tagged-parse sentence))]
+      [:div (render-taggables-as-sentence 0 (:tagged-parse sentence))]
 
       ; A list of taggables, with tags and the ability to add more tags
-      [:ul
-       (map-indexed
-         (fn [idx taggable]
-           ^{:key (str idx (:raw-text taggable))}
-           [:li.tags-and-morphemes
-            (taggable-to-ruby taggable)
+      (render-taggables-as-list sentence)
 
-            ; Buttons
-            [:button {:onClick #(r/dispatch [:ask-for-lookup taggable])} "jmdict"]
-
-            ; Tags
-            (if (-> taggable :tags empty? not)
-              [:div.tag-list "Tags"
-               [:ul
-                (map-indexed
-                  (fn [tag-idx tag]
-                    ^{:key (str idx "tag" tag-idx)}
-                    [:li (render-tag tag)
-                     [:button
-                      {:onClick #(r/dispatch
-                                   [:delete-tag taggable tag-idx])}
-                      "×"]])
-                  (:tags taggable))
-                ]])
-
-
-            ; morphemes
-            [:div.morpheme-list "Morphemes "
-             [:ol
-             (map-indexed
-               (fn [m-idx morpheme]
-                 ^{:key (str idx "m" m-idx)}
-                 [:li.morpheme-in-taggable (render-morpheme morpheme)])
-               (:morphemes taggable))]]
-            ])
-         (->> sentence
-              :tagged-parse
-              db/flatten-taggables
-              (filter #(-> %
-                           :morphemes
-                           first
-                           :pos
-                           first
-                           blacklisted-pos
-                           not))))]
-
-      ; The results of JMdict lookups
-      (let [entries @(r/subscribe [:jmdict-entries])
-            lexeme-lookup @(r/subscribe [:lexeme-being-looked-up])]
+      ; The results of tag lookups: JMdict, grammar, etc.
+      (let [{:keys [entries source] :as results} @(r/subscribe [:tags-results])
+            taggable-under-lookup @(r/subscribe [:taggable-being-tagged])]
         [:div
-         [:h4 "JMDICT lookup"]
-         [:p "Looking up: " (:raw-text lexeme-lookup)]
-         [:ul (map
-                (fn [entry]
-                  ^{:key (:ent_seq entry)}
-                  [:li (render-entry entry)])
-                entries)]])
+         [:h4 "Tag lookup " [:code (str source)]]
+         [:div "Tagging: " (:raw-text taggable-under-lookup)]
+         (condp = source
+           :grammar (let [entries @(r/subscribe [:grammar-entries])
+                          new-grammar-entry @(r/subscribe [:new-grammar-entry])]
+                      [:div
+                       [:ul (map
+                              (fn [entry]
+                                ^{:key (:id entry)}
+                                [:li (render-grammar-entry entry)])
+                              entries)]
+                       [:input {:type "text"
+                                :placeholder "New/search? grammar entry"
+                                :value new-grammar-entry
+                                :onChange #(r/dispatch [:new-text
+                                                        :new-grammar-entry
+                                                        (-> % .-target .-value)])}]
+                       [:button {:onClick #(r/dispatch [:new-grammar-entry
+                                                        new-grammar-entry])}
+                        "+"]])
+
+           :jmdict [:ul (map
+                          (fn [entry]
+                            ^{:key (:ent_seq entry)}
+                            [:li (render-jmdict-entry entry)])
+                          entries)]
+           nil
+           )])
 
       ]
      [:div "…"])])
