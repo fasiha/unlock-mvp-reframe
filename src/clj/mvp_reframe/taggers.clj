@@ -5,11 +5,11 @@
             [cheshire.core :as json]
             [mvp-reframe.kana-kanji :as kana]))
 
-(def filename "JMdict-full.ldjson")
+(def jmdict-filename "JMdict-full.ldjson")
 
 (def all-entries
   (->>
-    filename
+    jmdict-filename
     io/resource
     slurp
     string/trim
@@ -115,3 +115,82 @@
       headwords
       ; multi-morpheme: search for raw-text too:
       (concat (text-to-headwords raw-text) headwords))))
+
+;; Jmdict-furigana integration
+
+(defn combine-adjacent
+  "Process a seq called `arr` with a combiner function to somehow combine
+  adjacent elements that are amenable to combination. `combiner` must be a 2-ary
+  function that returns a seq.
+
+  Example: a seq contains both numbers and keywords. Adjacent numbers can be
+  collapsed via addition, but adjacent keywords, or keyword-number pairs, cannot
+  be meaningfully combined:
+  ```clj
+  (defn combine-numbers [left right]
+    (if (and (= (type left) (type right))       ; if both are same type
+                                                ; (N.B.: Double not= Long !)
+             (instance? java.lang.Number left)) ; & both are numbers,
+      [(+ left right)]                          ; then add (& return seq)
+      [left right]))                            ; else, return args as seq.
+  (combine-adjacent combine-numbers [1 2 :hi :there 3 4 5 :bye])
+  ; => (3 :hi :there 12 :bye)
+  ```"
+  [combiner arr]
+  (reduce
+    (fn [memo curr]
+      (if (empty? memo)
+        [curr]
+        (let [all-but-prev (drop-last memo)
+              prev (last memo)]
+          (concat all-but-prev (combiner prev curr)))))
+    []
+    arr))
+
+(defn update-kanji-strvec-with-reading [kanji-vec [idx-str reading]]
+  (let [[start end] (string/split idx-str #"-")
+        start (Integer. start)
+        how-many (if end
+                   (+ 1 (- (Integer. end) start)) ;"1-2" should yield 2
+                   1)
+        kanji (apply str (subvec kanji-vec start (+ how-many start)))]
+    (into
+      []
+      (kana/replace-subvec
+        kanji-vec
+        start
+        how-many
+        (concat [{:kanji kanji :reading reading}] (repeat nil))))))
+
+(def update-kanji-strvec-with-readings (partial reduce update-kanji-strvec-with-reading))
+
+(defn combine-strings [left right]
+  (if (and (string? left) (string? right))
+    [(str left right)]
+    [left right]))
+
+(defn jmdict-furigana-parse-line [s]
+  (let [[headword reading furigana-raw] (string/split s #"\|")
+        headword-pieces (->> headword seq (mapv str ,,,)) ; ("全" "日" "本")
+        furigana-pieces (string/split furigana-raw #";") ; ["0:ぜん" "1-2:にほん"]
+        furigana-pieces (map #(string/split % #":") furigana-pieces) ; (["0" "ぜん"] ["1-2" "にほん"])
+        ]
+    {:headword headword
+     :reading reading
+     :furigana (->>
+                 (update-kanji-strvec-with-readings headword-pieces furigana-pieces)
+                 (filter identity ,,,)
+                 (combine-adjacent combine-strings ,,,)
+                 (mapv #(if (:kanji %) % {:kanji nil :reading %}) ,,,))}))
+
+(def jmdict-furigana-filename "JmdictFurigana.txt")
+(def all-furigana
+  (->
+    jmdict-furigana-filename
+    io/resource
+    slurp
+    string/trim
+    string/split-lines
+    jmdict-furigana-parse-line
+    ))
+

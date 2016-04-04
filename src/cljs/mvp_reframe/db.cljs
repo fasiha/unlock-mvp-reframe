@@ -153,3 +153,6 @@
   "Puts db into localStorage"
   [db]
   (.setItem js/localStorage lsk (str db)))   ;; caveat: sorted-maps writen as EDN maps
+
+;; Utilities
+

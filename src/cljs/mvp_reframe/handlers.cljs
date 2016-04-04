@@ -1,7 +1,8 @@
 (ns mvp-reframe.handlers
     (:require [re-frame.core  :as re-frame :refer [after debug]]
-              [mvp-reframe.db :as db       :refer [ls->db db->ls! default-db]]
               [clojure.string :as string]
+              [mvp-reframe.db :as db       :refer [ls->db db->ls! default-db]]
+              [mvp-reframe.kana-kanji :as kana]
               [goog.net.XhrIo :as xhr]
               [cognitect.transit :as transit]
               [clojure.walk :as walk]))
@@ -166,7 +167,6 @@
   (fn [db [_ entry sense-number]]
     (tag-taggable db (db/make-jmdict-tag entry sense-number))))
 
-(defn drop-nth-vec [v n] (into (subvec v 0 n) (subvec v (+ n 1) (count v))))
 (re-frame/register-handler
   :delete-tag
   middlewares
@@ -176,5 +176,5 @@
       (update-in
         db
         full-path
-        drop-nth-vec ,,, tag-idx))))
+        kana/drop-nth-vec ,,, tag-idx))))
 
