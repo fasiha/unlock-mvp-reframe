@@ -135,10 +135,10 @@
   :new-grammar-entry
   middlewares
   (fn [db [_ text]]
-    (update-in
+    (->
       db
-      [:grammar-entries]
-      conj ,,, {:id (keyword text) :name text})))
+      (assoc-in ,,, [:new-grammar-entry] "")
+      (update-in ,,, [:grammar-entries] conj ,,, {:id (keyword text) :name text}))))
 
 (re-frame/register-handler
   :lookup-response
