@@ -185,12 +185,12 @@
 
 (def jmdict-furigana-filename "JmdictFurigana.txt")
 (def all-furigana
-  (->
+  (->>
     jmdict-furigana-filename
     io/resource
     slurp
     string/trim
     string/split-lines
-    jmdict-furigana-parse-line
+    (mapv jmdict-furigana-parse-line)
     ))
 
