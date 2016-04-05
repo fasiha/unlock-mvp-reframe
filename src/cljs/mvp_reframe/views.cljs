@@ -6,6 +6,15 @@
             [mvp-reframe.db :as db]
             [mvp-reframe.config :as config :refer [debug?]]))
 
+(defn make-ruby
+  ([base furigana]
+   (make-ruby base furigana "[" "]"))
+  ([base furigana left right]
+   [:ruby base
+    [:rp left]
+    [:rt furigana]
+    [:rp right]]))
+
 (defn new-sentences-panel []
   (let [new-japanese (r/subscribe [:new-japanese])
         new-translation (r/subscribe [:new-translation])]
@@ -54,10 +63,24 @@
         titles (concat kanjis readings)]
     (string/join "・" titles)))
 
+(defn jmdict-furigana-to-ruby [{:keys [headword reading furigana]}]
+  (map
+    (fn [{:keys [kanji reading]}] ; inner reading
+      (with-meta
+        (if kanji
+          (make-ruby kanji reading)
+          [:span reading]) {:key (str kanji reading)}))
+    furigana))
+
 (defn render-jmdict-entry
   [{:keys [k_ele r_ele sense ent_seq] :as entry}]
   (let [title (entry-to-headwords entry)]
     [:div title
+     [:div
+      (map-indexed (fn [n f]
+                     ^{:key (str ent_seq n)}
+                     [:div (jmdict-furigana-to-ruby f)])
+                   (:furigana entry))]
      [:ul
       (map-indexed
         (fn [sense-num a-sense]
@@ -173,15 +196,6 @@
      (if (= level 1) [:button
                       {:onClick #(r/dispatch [:unwrap-tagged-parse idx-in-parent])}
                       "unwrap"])]))
-
-(defn make-ruby
-  ([base furigana]
-   (make-ruby base furigana "[" "]"))
-  ([base furigana left right]
-   [:ruby base
-    [:rp left]
-    [:rt furigana]
-    [:rp right]]))
 
 (defn taggable-to-ruby [{:keys [raw-text morphemes] :as taggable}]
   (if (kana/any-kanji? raw-text)
