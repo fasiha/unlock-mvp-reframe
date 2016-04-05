@@ -76,11 +76,13 @@
   [{:keys [k_ele r_ele sense ent_seq] :as entry}]
   (let [title (entry-to-headwords entry)]
     [:div title
+
      [:div
       (map-indexed (fn [n f]
                      ^{:key (str ent_seq n)}
-                     [:div (jmdict-furigana-to-ruby f)])
+                     [:span (jmdict-furigana-to-ruby f) [:button "+"]])
                    (:furigana entry))]
+
      [:ul
       (map-indexed
         (fn [sense-num a-sense]
