@@ -80,7 +80,9 @@
      [:div
       (map-indexed (fn [n f]
                      ^{:key (str ent_seq n)}
-                     [:span (jmdict-furigana-to-ruby f) [:button "+"]])
+                     [:span {:style {:marginRight "1em"}}
+                      (jmdict-furigana-to-ruby f)
+                      [:button {:onClick #(r/dispatch [:add-furigana-to-taggable (:furigana f)])} "+"]])
                    (:furigana entry))]
 
      [:ul
@@ -199,11 +201,15 @@
                       {:onClick #(r/dispatch [:unwrap-tagged-parse idx-in-parent])}
                       "unwrap"])]))
 
-(defn taggable-to-ruby [{:keys [raw-text morphemes] :as taggable}]
-  (if (kana/any-kanji? raw-text)
-    (make-ruby
-      raw-text
-      (->> morphemes (map :literal_pronunciation) (apply str) kana/katakana-to-hiragana))
+(defn taggable-to-ruby [{:keys [raw-text furigana] :as taggable}]
+  (if furigana
+    (map-indexed (fn [n {:keys [kanji reading]}]
+                   (with-meta
+                     (if kanji
+                       (make-ruby kanji reading)
+                       [:span reading])
+                     {:key (str "rubies-" n)}))
+                 furigana)
     raw-text))
 
 (defn render-taggables-as-list [sentence]
@@ -271,41 +277,45 @@
       ; unfuse/unwrap
       [:div (render-taggables-as-sentence 0 (:tagged-parse sentence))]
 
-      ; A list of taggables, with tags and the ability to add more tags
-      (render-taggables-as-list sentence)
+      [:div.flexible-container
+       ; A list of taggables, with tags and the ability to add more tags
+       [:div.flexible-containee {:style {:border "1px solid lightgray" :maxHeight "30em" :overflowY "scroll" :flex 1}}
+        (render-taggables-as-list sentence)
+        ]
 
-      ; The results of tag lookups: JMdict, grammar, etc.
-      (let [{:keys [entries source] :as results} @(r/subscribe [:tags-results])
-            taggable-under-lookup @(r/subscribe [:taggable-being-tagged])]
-        [:div
-         [:h4 "Tag lookup " [:code (str source)]]
-         [:div "Tagging: " (:raw-text taggable-under-lookup)]
-         (condp = source
-           :grammar (let [entries @(r/subscribe [:grammar-entries])
-                          new-grammar-entry @(r/subscribe [:new-grammar-entry])]
-                      [:div
-                       [:ul (map
-                              (fn [entry]
-                                ^{:key (:id entry)}
-                                [:li (render-grammar-entry entry)])
-                              entries)]
-                       [:input {:type "text"
-                                :placeholder "New/search? grammar entry"
-                                :value new-grammar-entry
-                                :onChange #(r/dispatch [:new-text
-                                                        :new-grammar-entry
-                                                        (-> % .-target .-value)])}]
-                       [:button {:onClick #(r/dispatch [:new-grammar-entry
-                                                        new-grammar-entry])}
-                        "+"]])
+       ; The results of tag lookups: JMdict, grammar, etc.
+       (let [{:keys [entries source] :as results} @(r/subscribe [:tags-results])
+             taggable-under-lookup @(r/subscribe [:taggable-being-tagged])]
+         [:div.flexible-containee {:style {:border "1px solid lightgray" :maxHeight "30em" :overflowY "scroll" :flex 1}}
+          [:h4 "Tag lookup " [:code (str source)]]
+          [:div "Tagging: " (:raw-text taggable-under-lookup)]
+          (condp = source
+            :grammar (let [entries @(r/subscribe [:grammar-entries])
+                           new-grammar-entry @(r/subscribe [:new-grammar-entry])]
+                       [:div
+                        [:ul (map
+                               (fn [entry]
+                                 ^{:key (:id entry)}
+                                 [:li (render-grammar-entry entry)])
+                               entries)]
+                        [:input {:type "text"
+                                 :placeholder "New/search? grammar entry"
+                                 :value new-grammar-entry
+                                 :onChange #(r/dispatch [:new-text
+                                                         :new-grammar-entry
+                                                         (-> % .-target .-value)])}]
+                        [:button {:onClick #(r/dispatch [:new-grammar-entry
+                                                         new-grammar-entry])}
+                         "+"]])
 
-           :jmdict [:ul (map
-                          (fn [entry]
-                            ^{:key (:ent_seq entry)}
-                            [:li (render-jmdict-entry entry)])
-                          entries)]
-           nil
-           )])
+            :jmdict [:ul (map
+                           (fn [entry]
+                             ^{:key (:ent_seq entry)}
+                             [:li (render-jmdict-entry entry)])
+                           entries)]
+            nil
+            )])
+       ]
 
       ]
      [:div "…"])])
@@ -334,6 +344,8 @@
 
 (defn make-css []
   (css [
+        [:div.flexible-container {:display "flex" :flex-direction "row"}]
+        [:div.flexible-containee {:flex-grow 1}]
         [:div.sentence-japanese-translation {:white-space "pre-line"}]
         [:div.tag-list :div.morpheme-list
          {:margin "0.25em 0.25em 0.25em 1em"

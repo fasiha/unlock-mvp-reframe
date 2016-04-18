@@ -179,7 +179,7 @@
 
 (defn entry-to-furigana [entry]
   (let [headword-reading-list (entry-to-kanji-cross-readings entry)]
-    (filter identity (map headword-reading-to-furigana headword-reading-list))))
+    (keep headword-reading-to-furigana headword-reading-list)))
 
 (defn augment-entry-with-furigana [entry]
   (let [furiganas (entry-to-furigana entry)]

@@ -25,6 +25,7 @@
                            :raw-text ""  ; raw string
                            :morphemes [] ; vec of UniDic morphemes, like :raw-parse above
                            :path []      ; vec of integers: descent tree from the sentence
+                           :furigana nil ; vec of {:kanji "" :reading ""} from JmdictFurigana
                            })
 ; TODO add :furigana?
 
@@ -62,10 +63,12 @@
   {:source :jmdict :tag {:entry entry :sense-number sense-number}})
 (defn make-grammar-tag [entry] {:source :grammar :tag {:entry entry}})
 
-(defn make-taggable [raw-text morphemes tags children] {:raw-text raw-text
-                                                        :morphemes morphemes
-                                                        :tags tags
-                                                        :children children})
+(defn make-taggable [raw-text morphemes tags children furigana]
+  (merge default-tagged-parse {:raw-text raw-text
+                               :morphemes morphemes
+                               :tags tags
+                               :children children
+                               :furigana furigana}))
 (defn flatten-taggables [taggables]
   (if (and (-> taggables empty? not) (every? identity taggables))
      (into taggables (flatten-taggables (mapcat :children taggables)))))
@@ -100,9 +103,12 @@
 
 (defn fuse-wrap
   [operation taggables idx]
+  ; wrap everything in add-paths-to-taggables
   (add-paths-to-taggables
+    ; first check validity of call
     (if (and (nth taggables (+ 1 idx) false) ; merge idx and (1+idx)th entries
              (or (= operation :fuse) (= operation :wrap)))
+      ; assuming valid…
       (let [[left right] (split-at idx taggables)
             [a b] (take 2 right)
             right (drop 2 right)
@@ -111,7 +117,8 @@
                                   []
                                   (if (= operation :fuse)
                                     []
-                                    [a b]))]
+                                    [a b])
+                                  (vec (concat (:furigana a) (:furigana b))))]
         (apply conj (vec left) middle right))
       ; TODO just return the original input if either/both argument checks fail?
       taggables)))

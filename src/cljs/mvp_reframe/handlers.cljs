@@ -67,7 +67,7 @@
   middlewares
   (fn [db [_ id response]]
     (let [raw-parse (walk/keywordize-keys (my-transit-reader response))
-          tagged-parse (db/init-tagged-parse raw-parse)]
+          tagged-parse (db/add-paths-to-taggables (db/init-tagged-parse raw-parse))]
       (update-in
         db [:sentences id]
         merge {:raw-parse raw-parse :tagged-parse tagged-parse}))))
@@ -167,14 +167,54 @@
   (fn [db [_ entry sense-number]]
     (tag-taggable db (db/make-jmdict-tag entry sense-number))))
 
+(defn db-taggable-to-full-path [{:keys [sentence-id-surgery]} {:keys [path]}]
+  (let [path (drop-last (interleave path (repeat :children)))
+        full-path (concat [:sentences sentence-id-surgery :tagged-parse] path)]
+    full-path))
+
 (re-frame/register-handler
   :delete-tag
   middlewares
   (fn [db [_ taggable tag-idx]]
-    (let [path (drop-last (interleave (:path taggable) (repeat :children)))
-          full-path (concat [:sentences (:sentence-id-surgery db) :tagged-parse] path [:tags])]
+    (let [path (db-taggable-to-full-path db taggable)
+          full-path (concat path [:tags])]
       (update-in
         db
         full-path
         kana/drop-nth-vec ,,, tag-idx))))
 
+(defn make-furigana-vec
+  "Given an `original-raw` string and a vector of furigana maps `{:kanji \"…\"
+  :reading \"…\"}` in `jmdict-furigana-vec`, returns a vector of furigana maps
+  that tries to match as much of the furigana vector with the string as
+  possible. When the two diverge, returns whatever prefixed matches were found,
+  plus the rest of the original string."
+  [original-raw jmdict-furigana-vec]
+  (loop [shrinking-vec jmdict-furigana-vec
+         shrinking-str original-raw
+         growing-vec []]
+    (if (empty? shrinking-vec) ; all done?
+      growing-vec ; return
+      (let [first-furi (first shrinking-vec)
+            first-val (or (:kanji first-furi)
+                          (:reading first-furi))
+            n (count first-val)]
+        (if (string/starts-with? shrinking-str first-val)
+          (recur (rest shrinking-vec)
+                 (subs shrinking-str n)
+                 (conj growing-vec first-furi))
+          ; diverged. Unless something matched earlier, return nil
+          (if-not (empty? growing-vec)
+            (conj growing-vec {:kanji nil
+                               :reading shrinking-str})))))))
+
+(re-frame/register-handler
+  :add-furigana-to-taggable
+  (fn [db [_ furigana-vec]]
+    (let [jmdict-string (apply str (map #(or (:kanji %) (:reading %)) furigana-vec))
+          taggable (:taggable-being-tagged db)
+          taggable-furigana (make-furigana-vec (:raw-text taggable)
+                                               furigana-vec)
+          full-path (concat (db-taggable-to-full-path db taggable) [:furigana])]
+      (println furigana-vec)
+      (assoc-in db full-path taggable-furigana))))
