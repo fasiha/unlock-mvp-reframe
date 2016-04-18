@@ -117,8 +117,10 @@
                                   []
                                   (if (= operation :fuse)
                                     []
-                                    [a b])
-                                  (vec (concat (:furigana a) (:furigana b))))]
+                                    (apply conj
+                                           (if (-> a :children empty?) [a] (:children a))
+                                           (if (-> b :children empty?) [b] (:children b))))
+                                  (concat (:furigana a) (:furigana b)))]
         (apply conj (vec left) middle right))
       ; TODO just return the original input if either/both argument checks fail?
       taggables)))

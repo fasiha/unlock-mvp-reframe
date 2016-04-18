@@ -216,5 +216,4 @@
           taggable-furigana (make-furigana-vec (:raw-text taggable)
                                                furigana-vec)
           full-path (concat (db-taggable-to-full-path db taggable) [:furigana])]
-      (println furigana-vec)
       (assoc-in db full-path taggable-furigana))))

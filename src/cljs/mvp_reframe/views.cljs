@@ -202,7 +202,7 @@
                       "unwrap"])]))
 
 (defn taggable-to-ruby [{:keys [raw-text furigana] :as taggable}]
-  (if furigana
+  (if-not (empty? furigana)
     (map-indexed (fn [n {:keys [kanji reading]}]
                    (with-meta
                      (if kanji
